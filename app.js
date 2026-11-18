@@ -157,6 +157,30 @@
     DATA.chapters.forEach(ch=>{const a=el("a",null,`${ch.kicker} · ${ch.title}`);a.href=`#${ch.id}`;a.dataset.route=ch.id;chapterNav.append(a);});
     DATA.modules.forEach(m=>{const a=el("a",null,m.title);a.href=`#${m.id}`;a.dataset.route=m.id;moduleNav.append(a);});
   }
+  function setupMenu(){
+    const wrapper = document.querySelector(".shell");
+    const toggle = document.querySelector(".sidebar-toggle");
+    const links = document.getElementById("revision-links");
+    const preference = "ict200-menu-collapsed-v1";
+    let collapsed = false;
+    try { collapsed = localStorage.getItem(preference)==="true"; } catch (_) { /* Use the default. */ }
+    function paint(){
+      const label = collapsed ? "Expand menu" : "Collapse menu";
+      wrapper.classList.toggle("is-menu-collapsed",collapsed);
+      links.hidden = collapsed;
+      toggle.setAttribute("aria-expanded",String(!collapsed));
+      toggle.setAttribute("aria-label",label);
+      toggle.title = label;
+      toggle.querySelector(".sidebar-toggle-text").textContent = label;
+      toggle.querySelector(".sidebar-toggle-mark").textContent = collapsed ? "›" : "‹";
+    }
+    toggle.addEventListener("click",()=>{
+      collapsed=!collapsed;
+      try { localStorage.setItem(preference,String(collapsed)); } catch (_) { /* Keep it for this page. */ }
+      paint();
+    });
+    paint();
+  }
   function render(){
     const route=location.hash.replace(/^#/,"")||"home";app.replaceChildren();
     document.querySelectorAll("[data-route]").forEach(a=>{if(a.dataset.route===route)a.setAttribute("aria-current","page");else a.removeAttribute("aria-current");});
@@ -165,6 +189,6 @@
     document.title=`${ch?ch.title:module?module.title:"Revision hub"} · ICT200`;
     window.scrollTo({top:0,behavior:"auto"});
   }
-  renderNav();window.addEventListener("hashchange",render);render();
+  renderNav();setupMenu();window.addEventListener("hashchange",render);render();
   if("serviceWorker" in navigator && location.protocol.startsWith("http"))navigator.serviceWorker.register("./sw.js").catch(()=>{});
 })();

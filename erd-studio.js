@@ -3,17 +3,14 @@
 
   const groups = {
     entity: "Entities",
-    field: "Attributes and keys",
     attribute: "Attributes",
     key: "Key roles",
     end: "Crow’s Foot ends",
     line: "Relationship lines",
     category: "Subtype membership",
-    bars: "Completeness",
-    discriminator: "Discriminators"
+    bars: "Completeness"
   };
 
-  const fields = (...rows) => rows;
   const tiles = {
     patient: {kind: "entity", label: "PATIENT"},
     doctor: {kind: "entity", label: "DOCTOR"},
@@ -27,26 +24,25 @@
     member: {kind: "entity", label: "MEMBER"},
     volunteer: {kind: "entity", label: "VOLUNTEER"},
     donor: {kind: "entity", label: "DONOR"},
-    members: {kind: "field", rows: fields(["PK", "MemberID"], ["", "MemberName"], ["", "Phone"])},
-    volunteers: {kind: "field", rows: fields(["PK, FK1", "MemberID"], ["", "InterestArea"])},
-    donors: {kind: "field", rows: fields(["PK, FK1", "MemberID"], ["", "DonationMethod"])},
-    separateId: {kind: "field", rows: fields(["PK", "VolunteerID"], ["FK1", "MemberID"], ["", "InterestArea"])},
     d: {kind: "category", label: "Disjoint", mark: "d"},
     o: {kind: "category", label: "Overlapping", mark: "o"},
     partial: {kind: "bars", label: "Partial completeness", mark: "partial"},
-    total: {kind: "bars", label: "Total completeness", mark: "total"},
-    role: {kind: "discriminator", label: "Role", names: ["Role"]},
-    flags: {kind: "discriminator", label: "IsVolunteer + IsDonor", names: ["IsVolunteer", "IsDonor"]},
-    subtypeId: {kind: "discriminator", label: "MemberID", names: ["MemberID"]}
+    total: {kind: "bars", label: "Total completeness", mark: "total"}
   };
 
   const clinicAttributes = ["AppointmentDate","AppointmentID","AppointmentTime",
     "DoctorID","DoctorName","PatientID","PatientName","Phone","Specialty"];
-  const clinicKeys = ["PK","FK1","FK2"];
-  for (const id of clinicAttributes) tiles[id] = {kind:"attribute",label:id};
-  for (const id of clinicKeys) tiles[id] = {kind:"key",label:id};
+  const membershipAttributes = ["DonationMethod","InterestArea","IsDonor","IsVolunteer","MemberID","MemberName","Phone","Role"];
+  const keyRoles = ["PK","FK"];
+  for (const id of [...clinicAttributes,...membershipAttributes]) tiles[id] = {kind:"attribute",label:id};
+  for (const id of keyRoles) tiles[id] = {kind:"key",label:id};
 
-  const memberScenario = "A community organisation records every member’s unique ID, name and phone number. It records the main area of interest for each volunteer and a preferred donation method for each donor. For each member, the database records which roles the member has registered for.";
+  const memberScenario = "A community organisation records all its members. Each member has a unique member ID, a name and a phone number. Members may register as volunteers, donors, or both. A member who has not registered for either role remains in the organisation's records. For each volunteer, the organisation records one main area of interest. For each donor, it records one preferred donation method. The database must also record whether each member is registered as a volunteer and whether the member is registered as a donor.";
+  const memberTask = "Draw an Extended Entity Relationship Diagram (EERD). Show the supertype, subtypes, attributes, underlined primary keys, numbered foreign keys and subtype discriminators. Use the appropriate membership and completeness symbols.";
+  const memberExplain = "Name the membership and completeness constraints. Support each decision with words from the scenario.";
+  const policyTask = "Use the organisation and member details in Exercise 2. Treat (a) and (b) as separate alternatives to the original policy. For each part, redraw the specialization section of the EERD, show the subtype discriminator or discriminators, name both constraints, and explain the change.";
+  const policyA = "The organisation changes its registration policy. Every member must register as either a volunteer or a donor. A member is not allowed to register for both roles.";
+  const policyB = "In a separate policy proposal, every member must register as a volunteer or a donor, and a member may register for both roles.";
   const slot = (id, kind, label, hint) => ({id, kind, label, hint});
   const clinicSlots = [
     slot("leftName", "entity", "Entity that books", "Who books an appointment?"),
@@ -66,23 +62,25 @@
   };
   const memberSlots = [
     slot("centreName", "entity", "Supertype name", "Which entity includes everyone, regardless of their role?"),
-    slot("centreFields", "field", "Shared fields", "Put the unique member ID and the details shared by every member here."),
     slot("leftName", "entity", "Left subtype name", "Choose one of the two roles for this branch."),
-    slot("leftFields", "field", "Left subtype fields", "Use the shared MemberID as both PK and FK1, then add the detail specific to the role on this branch."),
     slot("rightName", "entity", "Right subtype name", "Choose the other role for this branch."),
-    slot("rightFields", "field", "Right subtype fields", "Use the shared MemberID as both PK and FK1, then add the detail specific to the role on this branch."),
     slot("category", "category", "Category circle", "Can a member belong to both subtypes under this policy?"),
-    slot("bars", "bars", "Completeness bars", "Can a member stay on record with neither role under this policy?"),
-    slot("discriminator", "discriminator", "Subtype discriminator fields", "Can the roles be selected independently, or must the member choose exactly one?")
+    slot("bars", "bars", "Completeness bars", "Can a member stay on record with neither role under this policy?")
   ];
-  function specialization(id, title, policy, category, bars, discriminator, explanation) {
-    const answer = {centreName: "member", centreFields: "members", category, bars, discriminator};
+  function specialization(id, title, policyPart, category, bars, discriminatorFields, explanation) {
+    const answer = {centreName: "member", category, bars};
+    const fields = {
+      member:{MemberID:"pk",MemberName:"regular",Phone:"regular",...Object.fromEntries(discriminatorFields.map(name=>[name,"regular"]))},
+      volunteer:{MemberID:"pkfk",InterestArea:"regular"},
+      donor:{MemberID:"pkfk",DonationMethod:"regular"}
+    };
     return {
-      id, title, type: "eerd", scenario: [memberScenario, policy], slots: memberSlots,
-      palette: ["donor","member","volunteer","donors","separateId","members","volunteers","d","o","total","partial","role","subtypeId","flags"],
+      id, title, type: "eerd", scenario:[memberScenario], slots:memberSlots, fields,
+      questions:policyPart ? [policyTask,`(${policyPart}) ${policyPart==="a" ? policyA : policyB}`] : [memberTask,memberExplain],
+      palette:["donor","member","volunteer",...membershipAttributes,...keyRoles,"d","o","total","partial"],
       answers: [
-        {...answer, leftName:"volunteer", leftFields:"volunteers", rightName:"donor", rightFields:"donors"},
-        {...answer, leftName:"donor", leftFields:"donors", rightName:"volunteer", rightFields:"volunteers"}
+        {...answer, leftName:"volunteer", rightName:"donor"},
+        {...answer, leftName:"donor", rightName:"volunteer"}
       ],
       explanation
     };
@@ -91,35 +89,44 @@
     {
       id:"clinic", type:"erd", title:"Clinic appointments", slots:clinicSlots, schema:clinicSchema,
       scenario:["A clinic keeps records of its patients, doctors and appointments. Each patient has a unique patient ID, a name and a phone number. Each doctor has a unique doctor ID, a name and a specialty. Patients and doctors may be registered before they have any appointments. A patient may book several appointments, and a doctor may attend several appointments. Each appointment is for exactly one patient and is attended by exactly one doctor. Each appointment has a unique appointment ID, an appointment date and an appointment time. The same patient may see the same doctor again on a different date or at a different time."],
-      task:"Draw an Entity Relationship Diagram (ERD) using Crow's Foot notation. Show all entities and attributes. Underline primary keys, label foreign keys as FK1, FK2 and so on within each entity, and show minimum and maximum participation. Use the appropriate identifying or non-identifying relationship lines.",
-      palette:["doctor","appointment","patient",...clinicAttributes,...clinicKeys,"zeroOne","oneMany","one","zeroMany","solid","dashed"],
+      questions:["Draw an Entity Relationship Diagram (ERD) using Crow's Foot notation. Show all entities and attributes. Underline primary keys, label foreign keys as FK1, FK2 and so on within each entity, and show minimum and maximum participation. Use the appropriate identifying or non-identifying relationship lines."],
+      palette:["doctor","appointment","patient",...clinicAttributes,...keyRoles,"zeroOne","oneMany","one","zeroMany","solid","dashed"],
       answers:[{
         leftName:"patient", centreName:"appointment", rightName:"doctor", booksParent:"one", booksChild:"zeroMany",
         attendsChild:"zeroMany", attendsParent:"one", booksLine:"dashed", attendsLine:"dashed"
       }],
       explanation:"Each appointment refers to exactly one patient and one doctor. Each parent may have zero or many appointments. Both links are dashed because PatientID and DoctorID are foreign keys outside the AppointmentID primary key."
     },
-    specialization("roles", "Organisation membership",
-      "A member may be a volunteer, a donor, both, or neither. Members with neither role stay on record.",
-      "o", "partial", "flags", "The o circle permits both roles. One horizontal bar permits a member with neither role. IsVolunteer and IsDonor record the two independent choices."),
-    specialization("one-role", "Policy A · Exactly one role",
-      "Every member must register as either a volunteer or a donor. A member cannot register for both.",
-      "d", "total", "role", "The d circle rules out both roles and two horizontal bars rule out neither. The required Role field holds VOLUNTEER or DONOR."),
-    specialization("at-least-one", "Policy B · At least one role",
-      "Every member must register for at least one role. A member may register as both a volunteer and a donor.",
-      "o", "total", "flags", "The o circle permits both roles and two horizontal bars require at least one. At least one of IsVolunteer and IsDonor must be Yes.")
+    specialization("roles", "Organisation membership", null,
+      "o", "partial", ["IsVolunteer","IsDonor"], "The o circle permits both roles. One horizontal bar permits a member with neither role. IsVolunteer and IsDonor record the two independent choices."),
+    specialization("one-role", "Policy A", "a",
+      "d", "total", ["Role"], "The d circle rules out both roles and two horizontal bars rule out neither. The required Role field holds VOLUNTEER or DONOR."),
+    specialization("at-least-one", "Policy B", "b",
+      "o", "total", ["IsVolunteer","IsDonor"], "The o circle permits both roles and two horizontal bars require at least one. At least one of IsVolunteer and IsDonor must be Yes.")
   ];
 
   const attempts = new Map();
   const attributes = new Map();
+  const positions = ["left","centre","right"];
+  const branchLabels = {left:"Left subtype", centre:"Supertype", right:"Right subtype"};
   let active = exercises[0].id;
 
-  function evaluate(exercise, placed) {
-    const score = answer => exercise.slots.filter(({id}) => placed[id] === answer[id]).length;
-    const expected = exercise.answers.reduce((best, answer) => score(answer) > score(best) ? answer : best);
-    return exercise.slots.map(spec => ({
-      ...spec, state: placed[spec.id] === expected[spec.id] ? "correct" : placed[spec.id] ? "revise" : "missing"
+  function evaluate(exercise, placed, byEntity) {
+    const candidate = answer => {
+      const schema = exercise.schema || Object.fromEntries(positions.map(position => [
+        position,{label:branchLabels[position],fields:exercise.fields[answer[position+"Name"]]}
+      ]));
+      const fields = evaluateAttributes(schema,byEntity);
+      // An explicitly chosen branch name takes precedence over its current attributes.
+      const score = exercise.slots.filter(({id}) => placed[id] === answer[id]).length * (fields.totalAttributes + 1) + fields.correctAttributes;
+      return {answer,fields,score};
+    };
+    const candidates = exercise.answers.map(candidate);
+    const best = candidates.reduce((a,b) => b.score>a.score ? b : a);
+    const slots = exercise.slots.map(spec => ({
+      ...spec, state: placed[spec.id] === best.answer[spec.id] ? "correct" : placed[spec.id] ? "revise" : "missing"
     }));
+    return {slots,fields:best.fields};
   }
 
   function evaluateAttributes(schema, byEntity) {
@@ -130,11 +137,9 @@
       const actual = byEntity[position];
       const expected = Object.entries(model.fields);
       totalAttributes += expected.length;
-      totalKeys += expected.filter(([,role]) => role !== "regular").length;
+      totalKeys += expected.reduce((sum,[,role])=>sum+(role==="pkfk" ? 2 : role==="regular" ? 0 : 1),0);
       const missing = expected.filter(([name]) => !actual.has(name)).map(([name]) => name);
       if (missing.length) errors.push({label:model.label + " · missing attributes", hint:"Add " + missing.join(", ") + "."});
-      const countedFKs = new Map();
-      actual.forEach(roles => roles.filter(role => role.startsWith("FK")).forEach(role => countedFKs.set(role,(countedFKs.get(role)||0)+1)));
       actual.forEach((roles, name) => {
         const expectedRole = model.fields[name];
         const id = position + ":" + name;
@@ -144,16 +149,16 @@
           return;
         }
         correctAttributes++;
-        const fk = roles.find(role => role.startsWith("FK"));
-        const distinctFK = fk && countedFKs.get(fk) === 1;
-        const correct = expectedRole === "regular" ? !roles.length : expectedRole === "pk" ?
-          roles.length === 1 && roles[0] === "PK" : roles.length === 1 && distinctFK;
+        const expectsPK = expectedRole === "pk" || expectedRole === "pkfk";
+        const expectsFK = expectedRole === "fk" || expectedRole === "pkfk";
+        const correct = roles.includes("PK") === expectsPK && roles.includes("FK") === expectsFK;
         marks.set(id,correct?"correct":"revise");
-        if (correct && expectedRole !== "regular") correctKeys++;
+        correctKeys += Number(expectsPK && roles.includes("PK")) + Number(expectsFK && roles.includes("FK"));
         if (!correct) {
           const clue = expectedRole === "regular" ? "This is a descriptive attribute. Remove the key label." :
             expectedRole === "pk" ? "This identifier uniquely identifies a row in this entity. Mark it as the PK." :
-              "This ID references a parent entity. Give it a numbered FK label that is distinct within this entity.";
+              expectedRole === "fk" ? "This ID references a parent entity. Mark it as an FK." :
+                "This subtype inherits its identifier. It identifies the subtype row and references its supertype, so it needs both a PK and an FK label.";
           errors.push({label:model.label + " · " + name + " key role",hint:clue});
         }
       });
@@ -186,11 +191,11 @@
 
     function openExercise() {
       const exercise = exercises.find(item => item.id === active);
-      const individual = Boolean(exercise.schema);
       if (!attempts.has(active)) attempts.set(active, {});
       const placed = attempts.get(active);
-      if (individual && !attributes.has(active)) attributes.set(active,Object.fromEntries(Object.keys(exercise.schema).map(id=>[id,new Map()])));
+      if (!attributes.has(active)) attributes.set(active,Object.fromEntries(positions.map(id=>[id,new Map()])));
       const byEntity = attributes.get(active);
+      const entityLabel = position => exercise.schema?.[position].label || branchLabels[position];
       const specs = new Map(exercise.slots.map(item => [item.id, item]));
       const slotButtons = new Map();
       const paletteButtons = new Map();
@@ -209,10 +214,9 @@
       const title = el("h3", "erd-title", exercise.title);
       const scenario = el("div", "erd-scenario");
       exercise.scenario.forEach(paragraph => scenario.append(el("p", null, paragraph)));
-      if (exercise.task) scenario.append(el("p","erd-task",exercise.task));
-      const instructions = el("p", "muted", individual ?
-        "Drag entity names and symbols to the diagram. Drag attributes into an entity, then drop PK or a numbered FK label onto the attribute. You can also select a tile, then its destination, using a tap or Enter." :
-        "Drag a tile to its place on the diagram. You can also select a tile, then its slot, using a tap or Enter. Select a slot first to see the tiles that fit there.");
+      exercise.questions.forEach(paragraph=>scenario.append(el("p","erd-task",paragraph)));
+      const instructions = el("p", "muted",
+        "Drag names and symbols to their slots. Drag attributes into an entity, then drop PK or FK onto the attribute. FK labels number themselves. You can also select a tile and its destination with a tap or Enter.");
       const palette = el("section", "erd-palette");
       palette.append(el("h4", null, "Tiles"));
       const groupNav = el("div", "erd-tool-row");
@@ -250,32 +254,23 @@
       feedback.hidden = true;
       feedback.setAttribute("role", "status");
       controls.append(check, reset);
-      const workbench = el("div",individual?"erd-workbench erd-clinic":"erd-workbench");
+      const workbench = el("div","erd-workbench erd-individual");
       const dragArea = el("div","erd-drag-area");
       dragArea.append(palette,board);
       workbench.append(dragArea,controls,feedback);
       workspace.append(title, scenario, instructions, workbench);
 
       function tileLabel(tile) {
-        return tile.label || tile.rows.map(([key, name]) => key ? key + " " + name : name).join(", ");
+        return tile.label;
       }
       function tileContent(element, tile, visualOnly = false) {
         if (tile.mark) element.append(makeSymbol(tile.mark));
-        if (tile.rows || (tile.names && visualOnly)) {
-          const rows = tile.rows || tile.names.map(name => ["", name]);
-          rows.forEach(([key, name]) => {
-            const row = el("span", "erd-field" + (key.includes("PK") ? " erd-pk" : ""));
-            if (key) row.append(el("small", "erd-key-tag", key));
-            row.append(el("span", "erd-field-name", name));
-            element.append(row);
-          });
-        } else if (!visualOnly || !tile.mark) {
+        if (!visualOnly || !tile.mark) {
           element.append(el("span", "erd-tile-label", tile.label));
         }
       }
       function placementMessage() {
         const base = Object.keys(placed).length + " of " + exercise.slots.length + " diagram slots filled.";
-        if (!individual) return base;
         const actual = Object.values(byEntity).reduce((sum,values)=>sum+values.size,0);
         return base + " " + actual + " attributes placed.";
       }
@@ -342,48 +337,40 @@
         target.addEventListener("click", () => {
           if (selectedTile && tiles[selectedTile].kind === spec.kind) {
             place(spec, selectedTile);
-          } else if (!individual || placed[id]) {
+          } else if (placed[id]) {
             selectedTile = "";
             selectedAttribute = null;
             if (selectedSlot === id) selectedSlot = "";
             else selectedSlot = id;
-            if (!individual) currentGroup = spec.kind;
             update();
-            if (selectedSlot && !individual) focusTiles();
           } else {
             selection.textContent = "Select a tile from the bank, then select this slot.";
           }
         });
         dropTarget(target,spec.kind,payload=>{if(place(spec,payload.id,payload.slot)) target.focus({preventScroll:true});});
-        if (individual) {
-          target.addEventListener("dragstart",event=>{
-            if (placed[id]) startDrag(event,placed[id],{slot:id});
-          });
-          target.addEventListener("dragend",clearDrag);
-        }
+        target.addEventListener("dragstart",event=>{
+          if (placed[id]) startDrag(event,placed[id],{slot:id});
+        });
+        target.addEventListener("dragend",clearDrag);
         slotButtons.set(id, {target, placeholder});
         return target;
       }
-      function entity(prefix, style, discriminator = false) {
+      function entity(prefix, style) {
         const card = el("div", "erd-entity " + style);
-        card.append(addSlot(prefix + "Name", "erd-name-slot", "Entity name"));
-        if (individual) {
-          const rows = el("div","erd-attribute-rows");
-          const drop = button("erd-slot erd-attribute-drop","Add attribute");
-          drop.dataset.entity = prefix;
-          drop.setAttribute("aria-label","Add attribute: " + exercise.schema[prefix].label);
-          drop.addEventListener("click",()=>{
-            const source = selectedAttribute;
-            const chosen = selectedTile;
-            if (source) placeAttribute(prefix,source.id,source.entity);
-            else if (chosen && tiles[chosen].kind === "attribute") placeAttribute(prefix,chosen);
-            else selection.textContent = "Select an attribute from the bank or a placed attribute to move.";
-          });
-          dropTarget(card,"attribute",payload=>placeAttribute(prefix,payload.id,payload.entity));
-          card.append(rows,drop);
-          attributeZones.set(prefix,{card,rows,drop});
-        } else card.append(addSlot(prefix + "Fields", "erd-field-slot", "Attributes and keys"));
-        if (discriminator) card.append(addSlot("discriminator", "erd-field-slot", "Discriminator fields"));
+        const rows = el("div","erd-attribute-rows");
+        const drop = button("erd-slot erd-attribute-drop","Add attribute");
+        drop.dataset.entity = prefix;
+        drop.setAttribute("aria-label","Add attribute: " + entityLabel(prefix));
+        drop.addEventListener("click",()=>{
+          const source = selectedAttribute;
+          const chosen = selectedTile;
+          if (source) placeAttribute(prefix,source.id,source.entity);
+          else if (chosen && tiles[chosen].kind === "attribute") placeAttribute(prefix,chosen);
+          else selection.textContent = "Select an attribute from the bank or a placed attribute to move.";
+        });
+        dropTarget(card,"attribute",payload=>placeAttribute(prefix,payload.id,payload.entity));
+        card.append(addSlot(prefix + "Name", "erd-name-slot", "Entity name"),rows,drop);
+        attributeZones.set(prefix,{card,rows,drop});
         return card;
       }
       function placeAttribute(entityId, name, source) {
@@ -410,19 +397,19 @@
           const previous = byEntity[origin.entity].get(origin.field);
           if (previous) byEntity[origin.entity].set(origin.field,previous.filter(value=>value!==role));
         }
-        const values = byEntity[entityId].get(name).filter(value=>role === "PK" ? value !== "PK" : value === "PK");
-        byEntity[entityId].set(name,[...values,role]);
+        const previous = byEntity[entityId].get(name);
+        byEntity[entityId].set(name,keyRoles.filter(value => value === role || previous.includes(value)));
         finishChange(role + " assigned to " + name + ". ");
         fieldTargets.get(entityId + ":" + name)?.focus({preventScroll:true});
       }
       function paintAttributes() {
-        if (!individual) return;
         fieldTargets.clear();
         attributeZones.forEach(({card,rows,drop},entityId)=>{
           const acceptsAttributes = Boolean(selectedAttribute || (selectedTile && tiles[selectedTile].kind==="attribute"));
           card.classList.toggle("erd-attribute-target",acceptsAttributes);
           drop.classList.toggle("erd-accepts",acceptsAttributes);
           rows.replaceChildren();
+          let fkNumber = 0;
           byEntity[entityId].forEach((roles,name)=>{
             const id = entityId + ":" + name;
             const row = el("div","erd-attribute-row");
@@ -430,8 +417,9 @@
             row.dataset.attributeEntity = entityId;
             row.dataset.result = fieldOutcome?.marks.get(id) || "";
             const field = button("erd-attribute-name" + (roles.includes("PK") ? " erd-underlined" : ""),name);
-            field.setAttribute("aria-label",name + " in " + exercise.schema[entityId].label +
-              (roles.length ? ", " + roles.join(", ") : ""));
+            const badges = roles.map(role => role==="FK" ? "FK"+(++fkNumber) : role);
+            field.setAttribute("aria-label",name + " in " + entityLabel(entityId) +
+              (badges.length ? ", " + badges.join(", ") : ""));
             const activeAttribute = selectedAttribute?.id === name && selectedAttribute.entity === entityId;
             field.setAttribute("aria-pressed",String(activeAttribute));
             field.draggable = true;
@@ -452,9 +440,10 @@
             fieldTargets.set(id,field);
             row.append(field);
             const chips = el("div","erd-key-chips");
-            roles.forEach(role=>{
-              const chip = button("erd-key-chip " + (role==="PK" ? "erd-primary" : "erd-foreign"),role + " ×");
-              chip.setAttribute("aria-label","Remove " + role + " from " + name + " in " + exercise.schema[entityId].label);
+            roles.forEach((role,index)=>{
+              const badge = badges[index];
+              const chip = button("erd-key-chip " + (role==="PK" ? "erd-primary" : "erd-foreign"),badge + " ×");
+              chip.setAttribute("aria-label","Remove " + badge + " from " + name + " in " + entityLabel(entityId));
               chip.draggable = true;
               chip.addEventListener("dragstart",event=>startDrag(event,role,{entity:entityId,field:name}));
               chip.addEventListener("dragend",clearDrag);
@@ -466,7 +455,7 @@
               chips.append(chip);
             });
             const remove = button("erd-remove-attribute","×");
-            remove.setAttribute("aria-label","Remove " + name + " from " + exercise.schema[entityId].label);
+            remove.setAttribute("aria-label","Remove " + name + " from " + entityLabel(entityId));
             remove.addEventListener("click",()=>{
               byEntity[entityId].delete(name);
               finishChange(name + " removed. ");
@@ -507,15 +496,16 @@
         left.prepend(voluntaryRole);
         right.prepend(donorRole);
         subtypes.append(left,right);
-        hierarchy.append(entity("centre", "erd-supertype", true), el("div", "erd-stem"), categoryRow,
+        hierarchy.append(entity("centre", "erd-supertype"), el("div", "erd-stem"), categoryRow,
           addSlot("bars", "erd-bars-slot", "Bars"), branch, subtypes);
         board.append(hierarchy);
         updateBranchLabels = () => {
           const name = side => placed[side + "Name"];
           const flag = side => name(side) === "volunteer" ? "IsVolunteer" : name(side) === "donor" ? "IsDonor" : "";
-          leftLabel.textContent = placed.discriminator === "flags" ? flag("left") : "";
-          rightLabel.textContent = placed.discriminator === "flags" ? flag("right") : placed.discriminator ? tiles[placed.discriminator].label : "";
-          const role = side => placed.discriminator === "role" && ["volunteer","donor"].includes(name(side)) ? "Role = " + tiles[name(side)].label : "";
+          const supertypeFields = byEntity.centre;
+          leftLabel.textContent = supertypeFields.has(flag("left")) ? flag("left") : "";
+          rightLabel.textContent = supertypeFields.has("Role") ? "Role" : supertypeFields.has(flag("right")) ? flag("right") : "";
+          const role = side => supertypeFields.has("Role") && ["volunteer","donor"].includes(name(side)) ? "Role = " + tiles[name(side)].label : "";
           voluntaryRole.textContent = role("left");
           donorRole.textContent = role("right");
         };
@@ -528,11 +518,6 @@
         piece.setAttribute("aria-label", tileLabel(tile));
         tileContent(piece, tile);
         piece.addEventListener("click", () => {
-          if (selectedSlot && !individual) {
-            const targetId = selectedSlot;
-            if (place(specs.get(targetId), id)) slotButtons.get(targetId).target.focus();
-            return;
-          }
           selectedSlot = "";
           selectedAttribute = null;
           selectedTile = selectedTile === id ? "" : id;
@@ -558,7 +543,7 @@
           if (tile) tileContent(target, tile, true);
           else target.append(el("span", null, placeholder));
           target.dataset.filled = String(Boolean(tile));
-          if (individual) target.draggable = Boolean(tile);
+          target.draggable = Boolean(tile);
           target.dataset.result = result?.state || "";
           target.setAttribute("aria-pressed", String(selectedSlot === id));
           target.setAttribute("aria-label", spec.label + ": " + (tile ? tileLabel(tile) : "empty") + (result ? ". " + result.state : ""));
@@ -580,9 +565,6 @@
         feedback.replaceChildren();
         feedback.hidden = true;
       }
-      function focusTiles() {
-        [...paletteButtons.values()].find(piece => !piece.hidden)?.focus();
-      }
       toSlot.addEventListener("click", () => {
         (board.querySelector(".erd-key-target .erd-attribute-name") ||
           board.querySelector(".erd-accepts[data-filled='false']") || board.querySelector(".erd-accepts"))?.focus();
@@ -596,7 +578,7 @@
       });
       reset.addEventListener("click", () => {
         Object.keys(placed).forEach(id => delete placed[id]);
-        if (individual) Object.values(byEntity).forEach(collection=>collection.clear());
+        Object.values(byEntity).forEach(collection=>collection.clear());
         selectedTile = "";
         selectedSlot = "";
         selectedAttribute = null;
@@ -605,16 +587,16 @@
         update("Diagram cleared.");
       });
       check.addEventListener("click", () => {
-        outcome = evaluate(exercise, placed);
+        const result = evaluate(exercise, placed, byEntity);
+        outcome = result.slots;
+        fieldOutcome = result.fields;
         const remaining = outcome.filter(item => item.state !== "correct");
         const right = outcome.length - remaining.length;
-        fieldOutcome = individual ? evaluateAttributes(exercise.schema,byEntity) : null;
-        const fieldErrors = fieldOutcome?.errors || [];
+        const fieldErrors = fieldOutcome.errors;
         const incomplete = remaining.length || fieldErrors.length;
-        const fieldScore = fieldOutcome ? " " + fieldOutcome.correctAttributes + "/" + fieldOutcome.totalAttributes +
-          " attributes and " + fieldOutcome.correctKeys + "/" + fieldOutcome.totalKeys + " key roles correct." : "";
-        feedback.replaceChildren(el("strong", null, right + " of " + outcome.length +
-          (individual ? " diagram slots correct." : " placements correct.") + fieldScore));
+        const fieldScore = " " + fieldOutcome.correctAttributes + "/" + fieldOutcome.totalAttributes +
+          " attributes and " + fieldOutcome.correctKeys + "/" + fieldOutcome.totalKeys + " key roles correct.";
+        feedback.replaceChildren(el("strong", null, right + " of " + outcome.length + " diagram slots correct." + fieldScore));
         feedback.className = "erd-feedback feedback " + (incomplete ? "bad" : "good");
         feedback.hidden = false;
         if (incomplete) {

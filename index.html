@@ -28,14 +28,19 @@
   </header>
   <div class="shell">
     <nav class="sidebar" aria-label="Revision sections">
-      <a class="brand" href="#home" data-route="home">ICT200 <span>Study path</span></a>
-      <p class="nav-caption">Start here</p>
-      <a href="#home" data-route="home">Overview</a>
-      <p class="nav-caption">Lecture chapters</p>
-      <div id="chapter-nav"></div>
-      <p class="nav-caption">Practice studios</p>
-      <div id="module-nav"></div>
-      <p class="nav-foot">Progress stays in this browser. No account or server is needed.</p>
+      <button class="sidebar-toggle" type="button" aria-expanded="true" aria-controls="revision-links" aria-label="Collapse menu" title="Collapse menu">
+        <span class="sidebar-toggle-mark" aria-hidden="true">‹</span><span class="sidebar-toggle-text">Collapse menu</span>
+      </button>
+      <div id="revision-links" class="sidebar-links">
+        <a class="brand" href="#home" data-route="home">ICT200 <span>Study path</span></a>
+        <p class="nav-caption">Start here</p>
+        <a href="#home" data-route="home">Overview</a>
+        <p class="nav-caption">Lecture chapters</p>
+        <div id="chapter-nav"></div>
+        <p class="nav-caption">Practice studios</p>
+        <div id="module-nav"></div>
+        <p class="nav-foot">Progress stays in this browser. No account or server is needed.</p>
+      </div>
     </nav>
     <main id="main" tabindex="-1">
       <div id="app" aria-live="polite"></div>
