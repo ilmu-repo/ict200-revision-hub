@@ -114,7 +114,7 @@ window.ICT200_CONTENT = {
       ]
     },
     {
-      id:"sql", title:"SQL practice", summary:"Work with the established THEMEPARKDB approach; this is a static learning exercise, not a live SQL server.",
+      id:"sql", title:"SQL practice", summary:"Write SELECT queries on THEMEPARKDB and check your Result Grid.",
       steps:[
         {heading:"Choose the database", body:"In MySQL Workbench, open your connection and a query tab. Run USE THEMEPARKDB; before querying the course tables. The Schemas tab shows the database and its tables."},
         {heading:"Build one clause at a time", body:"For a retrieval question, write SELECT for the columns, FROM for the table, WHERE for filtering, then ORDER BY for presentation."},

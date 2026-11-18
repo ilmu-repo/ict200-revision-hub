@@ -3,12 +3,14 @@
   const DATA = window.ICT200_CONTENT;
   const erd = window.ICT200_ERD;
   const normalization = window.ICT200_NORMALIZATION;
+  const sql = window.ICT200_SQL_STUDIO;
   const app = document.getElementById("app");
   const chapterNav = document.getElementById("chapter-nav");
   const moduleNav = document.getElementById("module-nav");
   const KEY = "ict200-hub-progress-v1";
   const state = readState();
   const flash = {};
+  let disposeSql;
 
   function readState() {
     try {
@@ -39,9 +41,11 @@
   function erdCount() { return erd.exercises.filter(exercise => erdCompleted(exercise.id)).length; }
   function normalizationCompleted(id) { return Boolean(state.correct[`normalization:stage:${id}`]); }
   function normalizationCount() { return normalization.stages.filter(stage => normalizationCompleted(stage.id)).length; }
+  function sqlCompleted(id) { return Boolean(state.correct[`sql:practice:${id}`]); }
+  function sqlCount() { return sql.exercises.filter(exercise => sqlCompleted(exercise.id)).length; }
   function progressCounts() {
-    const totalQuestions = DATA.chapters.reduce((n,ch)=>n+ch.questions.length,0)+DATA.modules.reduce((n,m)=>n+m.exercises.length,0)+erd.exercises.length+normalization.stages.length;
-    const correctQuestions = DATA.chapters.reduce((n,ch)=>n+questionCount(ch),0)+DATA.modules.reduce((n,m)=>n+m.exercises.filter((_,i)=>state.correct[`${m.id}:exercise${i}`]).length,0)+erdCount()+normalizationCount();
+    const totalQuestions = DATA.chapters.reduce((n,ch)=>n+ch.questions.length,0)+DATA.modules.reduce((n,m)=>n+m.exercises.length,0)+erd.exercises.length+normalization.stages.length+sql.exercises.length;
+    const correctQuestions = DATA.chapters.reduce((n,ch)=>n+questionCount(ch),0)+DATA.modules.reduce((n,m)=>n+m.exercises.filter((_,i)=>state.correct[`${m.id}:exercise${i}`]).length,0)+erdCount()+normalizationCount()+sqlCount();
     const cards = DATA.chapters.reduce((n,ch)=>n+ch.cards.length,0);
     const viewed = DATA.chapters.reduce((n,ch)=>n+ch.cards.filter((_,i)=>state.viewed[`${ch.id}:card${i}`]).length,0);
     return {totalQuestions,correctQuestions,cards,viewed};
@@ -68,13 +72,14 @@
     DATA.modules.forEach(m=>{
       const done=m.exercises.filter((_,i)=>state.correct[`${m.id}:exercise${i}`]).length;
       const extra=m.id==="erd"?` · ${erdCount()}/${erd.exercises.length} diagrams complete`:
-        m.id==="normalization"?` · ${normalizationCount()}/${normalization.stages.length} steps complete`:"";
+        m.id==="normalization"?` · ${normalizationCount()}/${normalization.stages.length} steps complete`:
+        m.id==="sql"?` · ${sqlCount()}/${sql.exercises.length} queries complete`:"";
       modules.append(linkCard(m.id,"Interactive note + exercise",m.title,m.summary,`${done}/${m.exercises.length} checkpoints correct${extra}`,"module-tile"));
     });
     app.append(modules);
     const scope=el("div","note-strip"); scope.append(el("strong",null,"What this covers: "),document.createTextNode("Final-exam concept revision follows Chapters 1–6. SQL is included as a separate lab practice stream, not represented as a current final-exam topic. These are newly written exercises, not past-paper questions.")); app.append(scope);
     const reset=button("Clear my saved progress","button ghost");
-    reset.addEventListener("click",()=>{if(window.confirm("Clear this browser's ICT200 progress and workshop answers?")){state.correct={};state.viewed={};normalization.clearSaved();saveState();render();}});
+    reset.addEventListener("click",()=>{if(window.confirm("Clear this browser's ICT200 progress and saved work?")){state.correct={};state.viewed={};normalization.clearSaved();sql.clearSaved();saveState();render();}});
     app.append(reset);
   }
   function renderChapter(ch) {
@@ -129,6 +134,12 @@
   }
   function renderModule(m){
     heading(app,"Practice studio",m.title,m.summary);
+    if(m.id==="sql"){
+      disposeSql=sql.mount(app,{
+        completed:sqlCompleted,
+        complete(id){state.correct[`sql:practice:${id}`]=true;saveState();}
+      });
+    }
     if(m.id==="erd"){
       erd.mount(app,{completed:erdCompleted,saveComplete(id){state.correct[`erd:diagram:${id}`]=true;saveState();}});
     }
@@ -141,7 +152,7 @@
     }
     const note=el("div","note-strip");note.append(el("strong",null,"How to use this: "),document.createTextNode("Read each short step, then try the checkpoint. For full worked examples, use the matching ICT200 lab/lecture handout."));app.append(note);
     m.steps.forEach((s,i)=>{const box=card("step");box.append(el("span","step-number",String(i+1)),el("h2",null,s.heading),el("p",null,s.body));app.append(box);});
-    if(m.code){const title=el("h2",null,"One statement, one clear layout");title.style.marginTop="27px";app.append(title);const code=el("pre","codebox");const lines=m.code.split("\n");lines.forEach((line,i)=>{if(i)code.append(document.createTextNode("\n"));let last=0;const tokens=/\bORDER BY\b|\bSELECT\b|\bFROM\b|\bDESC\b|\bTICKET_PRICE\b|\bTICKET_NO\b|\bTICKET\b/g;for(const hit of line.matchAll(tokens)){code.append(document.createTextNode(line.slice(last,hit.index)));const word=hit[0],cls=word==="DESC"?"order":/^(SELECT|FROM|ORDER BY)$/.test(word)?"kw":"name";code.append(el("span",cls,word));last=hit.index+word.length;}code.append(document.createTextNode(line.slice(last)));});app.append(code);app.append(el("p","muted tiny","Run this only after THEMEPARKDB has been created and selected in MySQL Workbench. Read the Result Grid and Action Output; this page does not execute SQL."));}
+    if(m.code){const title=el("h2",null,"One statement, one clear layout");title.style.marginTop="27px";app.append(title);const code=el("pre","codebox");const lines=m.code.split("\n");lines.forEach((line,i)=>{if(i)code.append(document.createTextNode("\n"));let last=0;const tokens=/\bORDER BY\b|\bSELECT\b|\bFROM\b|\bDESC\b|\bTICKET_PRICE\b|\bTICKET_NO\b|\bTICKET\b/g;for(const hit of line.matchAll(tokens)){code.append(document.createTextNode(line.slice(last,hit.index)));const word=hit[0],cls=word==="DESC"?"order":/^(SELECT|FROM|ORDER BY)$/.test(word)?"kw":"name";code.append(el("span",cls,word));last=hit.index+word.length;}code.append(document.createTextNode(line.slice(last)));});app.append(code);app.append(el("p","muted tiny","In MySQL Workbench, select THEMEPARKDB before running this example. Compare the Result Grid and Action Output."));}
     const head=el("div","section-head");head.append(el("h2",null,"Try it yourself"),el("span","muted tiny","Three checkpoints · retry as needed"));app.append(head);
     m.exercises.forEach((p,j)=>{
       const id=`${m.id}:exercise${j}`,box=card("card-pad module-practice");box.append(el("span","question-type",`Checkpoint ${j+1}`),el("h2",null,p.prompt));
@@ -182,6 +193,8 @@
     paint();
   }
   function render(){
+    disposeSql?.();
+    disposeSql=null;
     const route=location.hash.replace(/^#/,"")||"home";app.replaceChildren();
     document.querySelectorAll("[data-route]").forEach(a=>{if(a.dataset.route===route)a.setAttribute("aria-current","page");else a.removeAttribute("aria-current");});
     const ch=DATA.chapters.find(c=>c.id===route),module=DATA.modules.find(m=>m.id===route);
