@@ -474,5 +474,5 @@
     return svg;
   }
 
-  window.ICT200_ERD = {exercises, mount};
+  window.ICT200_ERD = {exercises, mount, makeSymbol};
 })();

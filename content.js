@@ -128,7 +128,7 @@ window.ICT200_CONTENT = {
       code:"SELECT TICKET_NO,\n       TICKET_PRICE\nFROM TICKET\nORDER BY TICKET_PRICE DESC;"
     },
     {
-      id:"normalization", title:"Normalization workshop", summary:"Follow dependencies rather than memorising one final table layout.",
+      id:"normalization", title:"Normalization workshop", summary:"Choose the primary key, classify dependencies, build UNF to 3NF tables, and finish the Crow’s Foot ERD.",
       steps:[
         {heading:"Make facts atomic", body:"If one cell stores several values or a report repeats groups of fields, produce one atomic fact per row before seeking 1NF."},
         {heading:"Write the key and dependencies", body:"State what uniquely identifies a row. A dependency is only valid when the business rule supports it."},

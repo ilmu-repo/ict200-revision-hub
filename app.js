@@ -2,6 +2,7 @@
   "use strict";
   const DATA = window.ICT200_CONTENT;
   const erd = window.ICT200_ERD;
+  const normalization = window.ICT200_NORMALIZATION;
   const app = document.getElementById("app");
   const chapterNav = document.getElementById("chapter-nav");
   const moduleNav = document.getElementById("module-nav");
@@ -36,9 +37,11 @@
   function questionCount(ch) { return ch.questions.filter((_,i)=>state.correct[`${ch.id}:q${i}`]).length; }
   function erdCompleted(id) { return Boolean(state.correct[`erd:diagram:${id}`]); }
   function erdCount() { return erd.exercises.filter(exercise => erdCompleted(exercise.id)).length; }
+  function normalizationCompleted(id) { return Boolean(state.correct[`normalization:stage:${id}`]); }
+  function normalizationCount() { return normalization.stages.filter(stage => normalizationCompleted(stage.id)).length; }
   function progressCounts() {
-    const totalQuestions = DATA.chapters.reduce((n,ch)=>n+ch.questions.length,0)+DATA.modules.reduce((n,m)=>n+m.exercises.length,0)+erd.exercises.length;
-    const correctQuestions = DATA.chapters.reduce((n,ch)=>n+questionCount(ch),0)+DATA.modules.reduce((n,m)=>n+m.exercises.filter((_,i)=>state.correct[`${m.id}:exercise${i}`]).length,0)+erdCount();
+    const totalQuestions = DATA.chapters.reduce((n,ch)=>n+ch.questions.length,0)+DATA.modules.reduce((n,m)=>n+m.exercises.length,0)+erd.exercises.length+normalization.stages.length;
+    const correctQuestions = DATA.chapters.reduce((n,ch)=>n+questionCount(ch),0)+DATA.modules.reduce((n,m)=>n+m.exercises.filter((_,i)=>state.correct[`${m.id}:exercise${i}`]).length,0)+erdCount()+normalizationCount();
     const cards = DATA.chapters.reduce((n,ch)=>n+ch.cards.length,0);
     const viewed = DATA.chapters.reduce((n,ch)=>n+ch.cards.filter((_,i)=>state.viewed[`${ch.id}:card${i}`]).length,0);
     return {totalQuestions,correctQuestions,cards,viewed};
@@ -61,10 +64,17 @@
     DATA.chapters.forEach(ch=>grid.append(linkCard(ch.id,ch.kicker,ch.title,ch.summary,`${questionCount(ch)}/${ch.questions.length} checks correct`,"chapter-tile")));
     app.append(grid);
     const mh=el("div","section-head"); mh.append(el("h2",null,"Practice studios")); app.append(mh);
-    const modules=el("div","grid"); DATA.modules.forEach(m=>{const done=m.exercises.filter((_,i)=>state.correct[`${m.id}:exercise${i}`]).length;const diagrams=m.id==="erd"?` · ${erdCount()}/${erd.exercises.length} diagrams complete`:"";modules.append(linkCard(m.id,"Interactive note + exercise",m.title,m.summary,`${done}/${m.exercises.length} checkpoints correct${diagrams}`,"module-tile"));}); app.append(modules);
+    const modules=el("div","grid");
+    DATA.modules.forEach(m=>{
+      const done=m.exercises.filter((_,i)=>state.correct[`${m.id}:exercise${i}`]).length;
+      const extra=m.id==="erd"?` · ${erdCount()}/${erd.exercises.length} diagrams complete`:
+        m.id==="normalization"?` · ${normalizationCount()}/${normalization.stages.length} steps complete`:"";
+      modules.append(linkCard(m.id,"Interactive note + exercise",m.title,m.summary,`${done}/${m.exercises.length} checkpoints correct${extra}`,"module-tile"));
+    });
+    app.append(modules);
     const scope=el("div","note-strip"); scope.append(el("strong",null,"What this covers: "),document.createTextNode("Final-exam concept revision follows Chapters 1–6. SQL is included as a separate lab practice stream, not represented as a current final-exam topic. These are newly written exercises, not past-paper questions.")); app.append(scope);
     const reset=button("Clear my saved progress","button ghost");
-    reset.addEventListener("click",()=>{if(window.confirm("Clear this browser's ICT200 question and flashcard progress?")){state.correct={};state.viewed={};saveState();render();}});
+    reset.addEventListener("click",()=>{if(window.confirm("Clear this browser's ICT200 progress and workshop answers?")){state.correct={};state.viewed={};normalization.clearSaved();saveState();render();}});
     app.append(reset);
   }
   function renderChapter(ch) {
@@ -121,6 +131,13 @@
     heading(app,"Practice studio",m.title,m.summary);
     if(m.id==="erd"){
       erd.mount(app,{completed:erdCompleted,saveComplete(id){state.correct[`erd:diagram:${id}`]=true;saveState();}});
+    }
+    if(m.id==="normalization"){
+      normalization.mount(app,{
+        completed:normalizationCompleted,
+        complete(id){state.correct[`normalization:stage:${id}`]=true;saveState();},
+        resetProgress(){normalization.stages.forEach(stage=>delete state.correct[`normalization:stage:${stage.id}`]);saveState();}
+      });
     }
     const note=el("div","note-strip");note.append(el("strong",null,"How to use this: "),document.createTextNode("Read each short step, then try the checkpoint. For full worked examples, use the matching ICT200 lab/lecture handout."));app.append(note);
     m.steps.forEach((s,i)=>{const box=card("step");box.append(el("span","step-number",String(i+1)),el("h2",null,s.heading),el("p",null,s.body));app.append(box);});
