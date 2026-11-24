@@ -155,14 +155,16 @@
     }
     const height=stage===1?146:stage===2?379:stage<5?427:655;
     const width=stage===1?665:1065;
-    const view=stage===5||stage===6?"85 188 900 459":"0 0 "+width+" "+height;
+    const subtypeDetail=stage===5||stage===6;
+    const drawingWidth=subtypeDetail?900:width;
+    const view=subtypeDetail?"85 188 900 459":"0 0 "+width+" "+height;
     const desc=["Model identifies a product type. Serial number identifies a unit.",
       "Customer uses IC number. Agent uses agent ID.",
       "Rental uses account number and references customer, unit and agent.",
       "One model has zero or many units. One customer, unit or agent can have zero or many rentals. Each child has exactly one parent on each link.",
       "Salary deduction and auto-debit inherit rental account number as PK and FK1.",
       "Payment package selects exactly one subtype. Disjoint d and two bars mean total completeness."].slice(0,stage).join(" ");
-    return '<div class="diagram water-diagram" tabindex="0" aria-label="TurQ Water diagram, scroll horizontally on small screens"><svg viewBox="'+view+'" role="img" aria-label="'+esc(desc)+'" font-family="Arial,sans-serif" font-size="16" fill="#18344b">'+drawing+'</svg></div>';
+    return '<div class="diagram water-diagram" tabindex="0" aria-label="TurQ Water diagram, scroll horizontally on small screens"><svg style="--drawing-width:'+drawingWidth/16+'rem" viewBox="'+view+'" role="img" aria-label="'+esc(desc)+'" font-family="Arial,sans-serif" font-size="16" fill="#18344b">'+drawing+'</svg></div>';
   }
   function diagram(ex, stage) {
     if(ex.type==="mixed") return waterDiagram(ex,stage);
@@ -215,7 +217,7 @@
         (level>=3?(model.answers[0].category==="d"?" Disjoint, d. Role selects VOLUNTEER or DONOR.":" Overlapping, o. IsVolunteer and IsDonor select the corresponding roles."):"")+
         (level>=4?(model.answers[0].bars==="total"?" Two bars. Every member needs at least one role.":" One bar. A member may have neither role."):"");
     }
-    return '<div class="diagram" tabindex="0" aria-label="Diagram, scroll horizontally on small screens"><svg viewBox="0 0 800 '+height+'" role="img" aria-label="'+esc(description)+'" font-family="Arial,sans-serif" font-size="16" fill="#18344b">'+shapes+'</svg></div>';
+    return '<div class="diagram" tabindex="0" aria-label="Diagram, scroll horizontally on small screens"><svg style="--drawing-width:50rem" viewBox="0 0 800 '+height+'" role="img" aria-label="'+esc(description)+'" font-family="Arial,sans-serif" font-size="16" fill="#18344b">'+shapes+'</svg></div>';
   }
   function truth(ex) {
     const a=ex.answers[0];
