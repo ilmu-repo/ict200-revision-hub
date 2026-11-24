@@ -5,20 +5,20 @@
     clinic: {title:"1 · Clinic appointments", steps:[
       ["Find the three records","Entities","patients, doctors and appointments","What needs its own record?",["Draw PATIENT, DOCTOR and APPOINTMENT.","Give each visit its own APPOINTMENT record."],1],
       ["Put facts in the right box","Attributes and keys","a unique appointment ID, an appointment date and an appointment time","What identifies one visit?",["PATIENT: underline PatientID. Add PatientName and Phone.","DOCTOR: underline DoctorID. Add DoctorName and Specialty.","APPOINTMENT: underline AppointmentID. Add AppointmentDate and AppointmentTime."],2],
-      ["Connect each visit to its people","Foreign keys","exactly one patient and is attended by exactly one doctor","Where do the two references belong?",["In APPOINTMENT, add PatientID (FK1) and DoctorID (FK2).","Link each FK to its parent PK. Draw dashed lines because AppointmentID alone identifies each visit."],3],
+      ["Connect each visit to its people","Foreign keys","exactly one patient and is attended by exactly one doctor","Where do the two references belong?",["In APPOINTMENT, add PatientID (FK1) and DoctorID (FK2).","PatientID links to PATIENT.PatientID. DoctorID links to DOCTOR.DoctorID.","Draw two dashed lines. The FKs sit outside the AppointmentID primary key."],3],
       ["Read the ends in both directions","Participation","may be registered before they have any appointments","Can a patient or doctor have zero appointments?",["One appointment needs exactly one patient and exactly one doctor. Put two strokes beside each parent.","One patient or doctor can have zero or many appointments. Put a circle and crow’s foot beside APPOINTMENT on each link."],4],
       ["Check a repeat visit","Final diagram","The same patient may see the same doctor again","Can this diagram store both visits?",["Give a repeat visit a new AppointmentID. The same PatientID and DoctorID can appear again.","A patient with no visits has a PATIENT row and zero APPOINTMENT rows."],5]
     ]},
     roles: {title:"2 · Organisation membership", steps:[
       ["Find the common record and the roles","Entity types","Members may register as volunteers, donors, or both.","What is true of every volunteer and every donor?",["Draw MEMBER as the supertype.","Draw VOLUNTEER and DONOR as subtypes. Both roles can belong to the same member."],1],
       ["Place the shared and role-specific facts","Attributes and keys","one main area of interest","Which facts belong to one role only?",["MEMBER holds MemberID (PK), MemberName and Phone.","VOLUNTEER adds InterestArea. DONOR adds DonationMethod.","Underline MemberID in each subtype. Label it PK and FK1 because it identifies the row and links back to MEMBER."],2],
-      ["Decide whether both roles are allowed","Membership","or both","Can the same MemberID appear in both subtypes?",["Both roles are allowed. Put o in the category circle for overlapping membership.","A volunteer and a donor can share the same MemberID."],3],
+      ["Decide whether both roles are allowed","Membership","or both","Can the same MemberID appear in both subtypes?",["Both roles are allowed. Put o in the category circle for overlapping membership.","One person can have a VOLUNTEER row and a DONOR row, both with that person’s MemberID."],3],
       ["Decide whether a role is required","Completeness","not registered for either role remains in the organisation's records","Can a member have neither role?",["Neither role is required. Draw one bar for partial completeness.","Keep the MEMBER row even when there are no subtype rows."],4],
       ["Record and check the role choices","Final diagram","whether each member is registered as a volunteer and whether the member is registered as a donor","How can we store two independent answers?",["IsVolunteer is Yes when a VOLUNTEER row exists.","IsDonor is Yes when a DONOR row exists.","Check the four combinations in the table."],5]
     ]},
     "one-role": {title:"3(a) · Exactly one role", steps:[
       ["Start from Exercise 2","Base model","Use the organisation and member details in Exercise 2.","Which parts of the original model still apply?",["Start from the original MEMBER, VOLUNTEER and DONOR diagram.","Keep MemberID and the role-specific attributes. Recheck both rules for policy (a)."],0],
-      ["Read the limit on membership","Membership","not allowed to register for both roles","Could a member volunteer and donate?",["Both roles are forbidden. Put d in the circle for disjoint membership.","A MemberID can appear in at most one subtype."],3],
+      ["Read the limit on membership","Membership","not allowed to register for both roles","Could a member volunteer and donate?",["A member can take either role, but cannot hold both at once. Put d in the circle for disjoint membership.","A MemberID can appear in at most one subtype."],3],
       ["Read the minimum participation","Completeness","Every member must register","Could a member remain in neither role?",["Every member must have a role. Draw two bars for total completeness.","Together, d and two bars mean exactly one role per member."],4],
       ["Choose the discriminator and check","Final diagram","either a volunteer or a donor","Which single value identifies the role?",["Add one required discriminator, Role, to MEMBER.","Use VOLUNTEER or DONOR as its value. Create the matching subtype row."],5]
     ]},
@@ -42,9 +42,9 @@
       ["blue","patients?|doctors?|appointments?"]
     ],
     eerd:[
-      ["green","unique member ID|phone number|name|main area of interest|preferred donation method|whether each member is registered|whether the member is registered|MemberID|MemberName|Phone|InterestArea|DonationMethod|IsVolunteer|IsDonor|discriminators?|inherited keys|FK1|PK"],
+      ["green","unique member ID|phone number|name(?! the membership)|main area of interest|preferred donation method|whether each member is registered|whether the member is registered|MemberID|MemberName|Phone|InterestArea|DonationMethod|IsVolunteer|IsDonor|discriminators?|inherited keys|FK1|PK"],
       ["pink","not registered for either role|every member must register|every member must have a role|neither role is required|partial completeness|total completeness|one bar|two bars|at least one|No/No"],
-      ["orange","not allowed to register for both roles|may register for both roles|or both|both roles are allowed|both roles are forbidden|overlapping membership|disjoint membership|exactly one role|at most one|Yes/Yes"],
+      ["orange","not allowed to register for both roles|may register for both roles|or both|both roles are allowed|cannot hold both at once|overlapping membership|disjoint membership|exactly one role|at most one|Yes/Yes"],
       ["purple","volunteers?|donors?|subtypes?"],
       ["blue","members?|supertype"]
     ]
@@ -91,7 +91,7 @@
       }).join("");
   }
   function diagram(ex, stage) {
-    let shapes="", height=265;
+    let shapes="", description="", height=265;
     if(ex.type==="erd"){
       const positions=[["left",8,36,165],["centre",284,36,222],["right",615,36,173]];
       for(const [pos,x,y,w] of positions){
@@ -106,7 +106,12 @@
       if(stage>=4){
         shapes+=stroke("M180 98v20 M187 98v20 M602 98v20 M609 98v20 M284 99l-16 9 16 9 M506 99l16 9-16 9");
         for(const x of [257,533]) shapes+='<circle cx="'+x+'" cy="108" r="5.5" fill="white" stroke="#28666c" stroke-width="2.5"/>';
+        const endLabel='text-anchor="middle" font-size="13"';
+        for(const [x,value] of [[183,"(1,1)"],[266,"(0,N)"],[526,"(0,N)"],[602,"(1,1)"]]) shapes+=svgText(x,134,value,endLabel);
       }
+      description="Patient, Appointment and Doctor."+ (stage>=2?" The primary keys are PatientID, AppointmentID and DoctorID.":"")+
+        (stage>=3?" Appointment has two non-identifying links through PatientID and DoctorID.":"")+
+        (stage>=4?" Each appointment has exactly one patient and one doctor. Each patient or doctor can have zero or many appointments.":"");
       height=202;
     }else{
       const model=stage===0?exercises.find(e=>e.id==="roles"):ex;
@@ -130,8 +135,12 @@
           +svgText(602,241,disjoint?"Role = DONOR":"IsDonor = Yes",'text-anchor="end" '+fieldStyle);
       }
       if(level>=4) shapes+='<path d="M375 198h50 '+(model.answers[0].bars==="total"?"M375 204h50":"")+'" stroke="#a51958" stroke-width="3"/>';
+      description=(stage===0?"Exercise 2 baseline. ":"")+"Member is the supertype. Volunteer and Donor are subtypes."+
+        (level>=2?" Both subtypes inherit MemberID as their primary key and foreign key.":"")+
+        (level>=3?(model.answers[0].category==="d"?" Disjoint, d. Role selects VOLUNTEER or DONOR.":" Overlapping, o. IsVolunteer and IsDonor select the corresponding roles."):"")+
+        (level>=4?(model.answers[0].bars==="total"?" Two bars. Every member needs at least one role.":" One bar. A member may have neither role."):"");
     }
-    return '<div class="diagram" tabindex="0" aria-label="Diagram, scroll horizontally on small screens"><svg viewBox="0 0 800 '+height+'" role="img" aria-label="'+esc(lessons[ex.id].title+": "+(stage===0?"original membership diagram":stage===5?"completed diagram":"diagram in progress"))+'" font-family="Arial,sans-serif" font-size="16" fill="#18344b">'+shapes+'</svg></div>';
+    return '<div class="diagram" tabindex="0" aria-label="Diagram, scroll horizontally on small screens"><svg viewBox="0 0 800 '+height+'" role="img" aria-label="'+esc(description)+'" font-family="Arial,sans-serif" font-size="16" fill="#18344b">'+shapes+'</svg></div>';
   }
   function truth(ex) {
     const a=ex.answers[0];
