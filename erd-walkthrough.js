@@ -223,6 +223,20 @@
       [[0,0],[1,0],[0,1],[1,1]].map(([v,d])=>'<tr><td>'+(v?"Yes":"No")+'</td><td>'+(d?"Yes":"No")+'</td><td>'+((v+d===2&&a.category==="d")||(v+d===0&&a.bars==="total")?"No":"Yes")+'</td></tr>').join("")+'</tbody></table>';
   }
   function source(ex){return [...ex.scenario,...ex.questions];}
+  function originalExercise(ex,open){
+    const paragraph=t=>'<p>'+annotate(t,ex)+'</p>';
+    // The printed TurQ question has an introduction, eight bullets, then a lead-in to (a) and (b).
+    const water=ex.id===exam.id;
+    const narrative=water?paragraph(ex.scenario[0])+'<ul class="source-rules">'+
+      ex.scenario.slice(1,-1).map(t=>'<li>'+paragraph(t)+'</li>').join("")+'</ul>':ex.scenario.map(paragraph).join("");
+    const tasks=ex.questions.map(t=>{
+      const marks=t.match(/ \(\d+ marks\)$/);
+      return marks?'<p>'+annotate(t.slice(0,marks.index),ex)+'<strong class="source-marks">'+esc(marks[0])+'</strong></p>':paragraph(t);
+    }).join("");
+    return '<details class="source-paper" '+(open?'open':'')+'><summary>Original exercise</summary>'+legend(ex)+
+      '<div class="source-body">'+narrative+'</div><section class="source-tasks"><h2>Questions</h2>'+
+      (water?paragraph(ex.scenario.at(-1)):'')+tasks+'</section></details>';
+  }
   const questions=[
     {section:"Classroom practice",source:"Exercise 1",title:"Clinic appointments",topics:"Entities, keys and Crow’s Foot cardinality",parts:["clinic"]},
     {section:"Classroom practice",source:"Exercise 2",title:"Organisation membership",topics:"Overlapping subtypes and partial completeness",parts:["roles"]},
@@ -278,9 +292,8 @@
     root.dataset.case=ex.id;
     const parts=question.parts.length>1?'<nav class="parts" aria-label="Question parts">'+question.parts.map((p,i)=>
       '<a href="#'+p+'" '+(p===id?'aria-current="page"':'')+'>Part ('+String.fromCharCode(97+i)+') · '+esc(lessons[p].title.split(" · ")[1])+'</a>').join("")+'</nav>':"";
-    root.innerHTML='<a class="library-back" href="erd-walkthrough.html">← Question library</a><div class="question-title"><small>'+esc(question.section)+' / '+esc(question.source)+'</small><h1 tabindex="-1">'+esc(question.title)+'</h1>'+parts+'</div><div class="reading-layout">'+stepMenu(ex,index)+
-      '<div class="reading-content">'+legend(ex)+'<details '+(open?"open":"")+'><summary>Read the original exercise</summary>'+
-      source(ex).map(t=>'<p>'+annotate(t,ex)+'</p>').join("")+'</details>'+stepHTML(ex,index)+
+    root.innerHTML='<a class="library-back" href="erd-walkthrough.html">← Question library</a><div class="question-title"><small>'+esc(question.section)+' / '+esc(question.source)+'</small><h1 tabindex="-1">'+esc(question.title)+'</h1>'+parts+'</div>'+
+      originalExercise(ex,open)+'<div class="reading-layout">'+stepMenu(ex,index)+'<div class="reading-content">'+stepHTML(ex,index)+
       '<div class="controls"><button type="button" id="prev">Previous step</button><button type="button" id="next" class="next">Next step</button></div>'+
       (parts && index===lesson.steps.length-1 && id===question.parts[0]?'<a class="continue-part" href="#'+question.parts[1]+'">Continue to part (b) →</a>':'')+
       questionNav(question)+'</div></div>';
