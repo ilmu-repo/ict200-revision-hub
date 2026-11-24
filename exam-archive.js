@@ -31,6 +31,8 @@
   function studio(root,c,complete){
     const slots={...c.slots};
     c.links.forEach((l,i)=>l.ends.forEach((v,e)=>slots['end'+i+'_'+e]={value:v,kind:"Cardinality"}));
+    const predicates=Object.keys(c.slots).filter(id=>c.slots[id].kind==="Relationship");
+    c.links.forEach((l,i)=>{slots["strength"+i]={value:c.entities[l.child].find(f=>f.name===l.fk).pk?"Identifying":"Non-identifying",kind:"Line style"};});
     const kinds=[...new Set(Object.values(slots).map(s=>s.kind))];
     const state=attempts.get(c.id)||{placed:{},kind:kinds[0]};attempts.set(c.id,state);
     let selected="",hints=true;try{hints=localStorage.getItem("ict200.erd.colourHints")!=="off";}catch{}
@@ -39,15 +41,21 @@
     kinds.forEach(k=>menu.add(new Option(k,k)));menu.value=state.kind;find(".arc-toggle").checked=hints;
     function correct(id){
       const spec=slots[id],value=state.placed[id];
+      if(spec.kind==="Key" && spec.owner && /FK/.test(spec.value)){
+        if(!value || spec.value.includes("PK")!==value.includes("PK"))return false;
+        const fk=value.match(/FK(\d+)/)?.[1],group=Object.entries(slots).filter(([,s])=>s.owner===spec.owner && s.kind==="Key" && s.value.includes("FK"));
+        return !!fk && Number(fk)<=group.length && group.filter(([key])=>state.placed[key]?.match(/FK(\d+)/)?.[1]===fk).length===1;
+      }
       if(spec.kind!=="Attribute" || !spec.owner)return value===spec.value;
-      const group=Object.entries(slots).filter(([,other])=>other.owner===spec.owner && other.role===spec.role);
+      const group=Object.entries(slots).filter(([,other])=>other.kind==="Attribute" && other.owner===spec.owner && other.role===spec.role);
       return group.some(([,other])=>other.value===value) && group.filter(([key])=>state.placed[key]===value).length===1;
     }
     function paint(){
       const k=state.kind,entries=Object.entries(slots).filter(([,s])=>s.kind===k);bank.replaceChildren();root.classList.toggle("arc-no-hints",!hints);bank.dataset.kind=k;
-      const values=[...new Set([...entries.map(([,s])=>s.value),...(k==="Cardinality"?Object.keys(counts):k==="Completeness"?["─","══"]:k==="Subtype rule"?["d","o"]:[])])].sort();
+      const values=[...new Set([...entries.map(([,s])=>s.value),...(k==="Line style"?["Identifying","Non-identifying"]:k==="Cardinality"?Object.keys(counts):k==="Completeness"?["─","══"]:k==="Subtype rule"?["d","o"]:[])])].sort();
       for(const v of values){const b=document.createElement("button");b.type="button";b.textContent=v;b.draggable=true;
         if(k==="Cardinality" && !c.chen.length){const mark={"1":"one","0..1":"zeroOne","0..*":"zeroMany","1..*":"oneMany"}[v];if(mark)b.prepend(ICT200_ERD.makeSymbol(mark));}
+        if(k==="Line style")b.prepend(ICT200_ERD.makeSymbol(v==="Identifying"?"solid":"dashed"));
         b.title=counts[v]||v;b.setAttribute("aria-pressed",String(v===selected));b.onclick=()=>{selected=v;paint();status.textContent="Selected "+v+". Choose a target.";};b.ondragstart=e=>{selected=v;e.dataTransfer.setData("text/plain",v);};bank.append(b);}
       board.innerHTML='<div class="arc-figure" tabindex="0" aria-label="Scrollable practice diagram"></div>';
       const wrap=board.firstElementChild;wrap.innerHTML=c.svg;
@@ -58,11 +66,26 @@
         node.onclick=e=>{e.preventDefault();put();};node.onkeydown=e=>{if(["Enter"," "].includes(e.key)){e.preventDefault();put();}};node.ondragover=e=>e.preventDefault();node.ondrop=e=>{e.preventDefault();selected=e.dataTransfer.getData("text/plain");if(values.includes(selected))put();};
       }
       wrap.querySelectorAll("title").forEach(n=>n.remove());
-      for(const a of wrap.querySelectorAll("a")){const id=(a.getAttribute("xlink:href")||"").slice(1);a.removeAttribute("xlink:href");a.removeAttribute("xlink:title");if(slots[id]?.kind===k){const t=a.querySelector("text");if(t)target(a,id,t);}}
+      for(const a of wrap.querySelectorAll("a")){const id=(a.getAttribute("xlink:href")||"").slice(1);if(c.links.length && predicates.includes(id))a.closest("g.edge").dataset.relation=predicates.indexOf(id);a.removeAttribute("xlink:href");a.removeAttribute("xlink:title");if(k==="Line style" && predicates.includes(id)){
+          const slot="strength"+predicates.indexOf(id),line=a.closest(".edge")?.querySelector("path");
+          if(line)line.setAttribute("stroke-dasharray",state.placed[slot]==="Non-identifying"?"5,3":"none");
+          const text=a.querySelector("text");if(text)target(a,slot,text);
+        }else if(slots[id]?.kind===k){const t=a.querySelector("text");if(t)target(a,id,t);}}
       if(k==="Attribute"&&Object.values(slots).some(s=>s.owner))board.insertAdjacentHTML("afterbegin","<p>Attributes with the same key role can appear in any order within their entity.</p>");
       if(k==="Cardinality"&&c.links.length){
         wrap.querySelectorAll("g.edge polygon,g.edge ellipse,g.edge polyline").forEach(n=>n.style.visibility="hidden");
-        const section=document.createElement("div");section.className="arc-ends";board.prepend(section);
+        for(const edge of wrap.querySelectorAll("g.edge[data-relation]")){
+          const path=edge.querySelector("path"),ns="http://www.w3.org/2000/svg";
+          for(const end of [0,1]){
+            const point=path.getPointAtLength(end?path.getTotalLength():0),id="end"+edge.dataset.relation+"_"+end;
+            const g=document.createElementNS(ns,"g"),rect=document.createElementNS(ns,"rect"),text=document.createElementNS(ns,"text");
+            g.setAttribute("transform","translate("+point.x+" "+point.y+")");rect.setAttribute("x","-12");rect.setAttribute("y","-7");rect.setAttribute("width","24");rect.setAttribute("height","14");rect.setAttribute("rx","3");rect.setAttribute("fill","#f6fbff");rect.setAttribute("stroke","#35718d");
+            text.setAttribute("text-anchor","middle");text.setAttribute("y","3");text.setAttribute("font-size","9");
+            g.append(rect,text);edge.append(g);target(g,id,text);delete g.dataset.slot;g.dataset.endProxy=id;
+          }
+        }
+        const extra=document.createElement("details");extra.className="arc-ends-panel";const summary=document.createElement("summary");summary.textContent="Read each relationship in words";extra.append(summary);
+        const section=document.createElement("div");section.className="arc-ends";extra.append(section);board.append(extra);
         c.links.forEach((l,i)=>{for(const [e,label] of [[0,"For one "+l.child+", how many "+l.parent+" records?"],[1,"For one "+l.parent+", how many "+l.child+" records?"]]){const line=document.createElement("p");line.append(label+" ");const b=document.createElement("button");line.append(b);section.append(line);target(b,"end"+i+"_"+e,b);}});
       }
     }
@@ -70,6 +93,9 @@
     find(".arc-toggle").onchange=e=>{hints=e.target.checked;try{localStorage.setItem("ict200.erd.colourHints",hints?"on":"off");}catch{}paint();};
     find(".arc-clear").onclick=()=>{for(const [id,s] of Object.entries(slots))if(s.kind===state.kind)delete state.placed[id];selected="";paint();status.textContent="Stage cleared.";};
     find(".arc-check").onclick=()=>{let right=0,total=0;for(const n of board.querySelectorAll("[data-slot]")){const id=n.dataset.slot,ok=correct(id);total++;right+=Number(ok);n.classList.toggle("needs-work",!ok);n.classList.toggle("is-right",ok);n.setAttribute("aria-label",slots[id].kind+" · "+(state.placed[id]||"empty")+" · "+(ok?"correct":"revise"));}
+      for(const proxy of board.querySelectorAll("[data-end-proxy]")){
+        const ok=correct(proxy.dataset.endProxy);proxy.classList.toggle("needs-work",!ok);proxy.classList.toggle("is-right",ok);
+      }
       status.textContent=right+" of "+total+" correct. "+(right===total?"Choose another stage.":"Check the marked targets against the original question.");
       if(Object.keys(slots).every(correct)){complete(c.id);status.textContent="All stages complete. Your diagram matches the worked model.";}};
     paint();
