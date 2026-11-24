@@ -46,3 +46,69 @@
   .exam-sheet .step { margin: .15em 0; }
   .exam-sheet .teaching-points { margin-bottom: .2em; }
 }
+
+@media screen {
+  body { --navy:#172e46; --copper:#92502e; --paper:#f7f3eb; --rule:#d8cfc1;
+    background:var(--paper); color:#263546; }
+  header { display:block; max-width:none; padding:0; background:var(--navy); color:#f4eee4; border:0; }
+  .mast { max-width:1300px; margin:auto; display:flex; justify-content:space-between; align-items:center;
+    gap:1rem; padding:1rem 1.25rem; font-size:.9rem; }
+  .mast a { color:#fff; font-weight:650; }
+  a { color:var(--navy); text-underline-offset:.18em; }
+  h1,.collection h2,.step h3,.collection strong,.question-nav strong {
+    font-family:"Crimson Text",Georgia,serif; color:var(--navy); font-weight:600;
+  }
+  h1 { font-size:clamp(2.3rem,5vw,4.25rem); letter-spacing:-.035em; line-height:1.05; }
+  #library { max-width:1060px; margin:clamp(1rem,4vw,4rem) auto 4rem; }
+  #library h1 { max-width:17em; margin:0 0 1em; }
+  .collection { border-top:2px solid var(--navy); padding:1.1rem 0 1.6rem; display:grid;
+    grid-template-columns:minmax(12rem,1fr) 3fr; gap:1.5rem; }
+  .collection h2 { margin:.25rem 0; font-size:1.65rem; }
+  .collection ul { list-style:none; margin:0; padding:0; }
+  .collection li+li { border-top:1px solid var(--rule); }
+  .collection a { display:flex; align-items:center; justify-content:space-between; gap:1rem;
+    padding:.75rem .6rem; text-decoration:none; }
+  .collection a:hover,.question-nav a:hover { background:#eee7da; }
+  .collection a>span,.question-nav a { display:grid; gap:.1rem; }
+  .collection small,.question-title>small,.question-nav small,.step>small {
+    color:var(--copper); font-weight:700; font-size:.82rem; }
+  .collection strong { font-size:1.48rem; }
+  .collection a b { font-size:1.45rem; color:var(--copper); }
+  .collection a span span { color:#4e5860; font-size:.95rem; }
+  .library-back { display:inline-block; margin:.5rem 0 1.25rem; font-size:.9rem; }
+  .question-title { padding:0 0 1.2rem; margin-bottom:1rem; border-bottom:2px solid var(--navy); }
+  .question-title h1 { margin:.23em 0 .1em; }
+  .parts { margin-top:.7rem; }
+  .step-menu { background:#fdfbf7; border-color:var(--rule); border-top:3px solid var(--copper); }
+  .step-menu strong { color:var(--navy); }
+  .step-menu select,.parts a,.controls button { color:var(--navy); border-color:#bdb3a4; }
+  .step-links a { color:var(--navy); }
+  .step-links a[aria-current],.parts a[aria-current],.controls .next {
+    background:var(--navy); color:white; box-shadow:none; }
+  .controls button:disabled { opacity:.55; cursor:default; }
+  .reading-content details { background:#fcfaf6; border-color:var(--rule); }
+  .reading-content details p { max-width:83ch; }
+  .reading-content .step { border-color:var(--rule); padding:clamp(.85rem,2vw,1.65rem); }
+  .step h3 { font-size:clamp(1.5rem,2.8vw,2.1rem); line-height:1.2; margin:.25em 0 .65em; }
+  .step .clue { border-color:var(--copper); background:#f5efe6; padding:.65rem .85rem; }
+  .step .diagram { margin-top:1.1rem; padding-top:.75rem; border-top:1px solid var(--rule); background:white; }
+  .continue-part { display:inline-block; margin:.8rem 0; }
+  .question-nav { margin:1.6rem 0 .5rem; padding-top:.8rem; border-top:2px solid var(--navy);
+    display:flex; justify-content:space-between; align-items:stretch; gap:.65rem; }
+  .question-nav a { flex:1; border:0; background:transparent; padding:.5rem; }
+  .question-nav a:last-child:not(:first-child),.question-nav a.next-question { text-align:right; }
+  .question-nav strong { font-size:1.18rem; }
+}
+@media screen and (max-width:650px) {
+  .mast { padding:.8rem; }
+  #library { margin:.8rem 0 2rem; }
+  .collection { grid-template-columns:1fr; gap:.2rem; }
+  .collection h2 { font-size:1.35rem; }
+  .collection a { padding:.65rem .15rem; }
+}
+@media print {
+  .library-page main,.library-page #library { display:block; }
+  .library-page #print { display:none; }
+  .library-page .collection li { margin:.5rem 0; }
+  .library-page .collection a span span,.library-page .collection a strong { display:block; }
+}

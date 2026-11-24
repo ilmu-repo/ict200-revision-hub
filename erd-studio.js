@@ -223,7 +223,11 @@
     nav.setAttribute("role", "group");
     nav.setAttribute("aria-label", "Diagram exercises");
     const workspace = el("div", "erd-workspace");
-    container.append(heading, nav, workspace);
+    const libraryLink=el("a",null,"Worked-answer question library");
+    libraryLink.href="erd-walkthrough.html";
+    const headingRow=el("div","erd-builder-heading");
+    headingRow.append(heading,libraryLink);
+    container.append(headingRow, nav, workspace);
     parent.append(container);
 
     function openExercise() {

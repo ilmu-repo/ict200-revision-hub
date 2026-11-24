@@ -223,6 +223,23 @@
       [[0,0],[1,0],[0,1],[1,1]].map(([v,d])=>'<tr><td>'+(v?"Yes":"No")+'</td><td>'+(d?"Yes":"No")+'</td><td>'+((v+d===2&&a.category==="d")||(v+d===0&&a.bars==="total")?"No":"Yes")+'</td></tr>').join("")+'</tbody></table>';
   }
   function source(ex){return [...ex.scenario,...ex.questions];}
+  const questions=[
+    {section:"Classroom practice",source:"Exercise 1",title:"Clinic appointments",topics:"Entities, keys and Crow’s Foot cardinality",parts:["clinic"]},
+    {section:"Classroom practice",source:"Exercise 2",title:"Organisation membership",topics:"Overlapping subtypes and partial completeness",parts:["roles"]},
+    {section:"Classroom practice",source:"Exercise 3",title:"Changes to membership policy",topics:"Parts (a) and (b) · Compare two sets of subtype rules",parts:["one-role","at-least-one"]},
+    {section:"Past examinations",source:"February 2026 · Part C, Question 1",title:"TurQ Water",topics:"Rental records, payment subtypes and information outputs",parts:[exam.id]}
+  ];
+  document.querySelector("#collections").innerHTML=[...new Set(questions.map(q=>q.section))].map(section=>
+    '<section class="collection"><h2>'+esc(section)+'</h2><ul>'+questions.filter(q=>q.section===section).map(q=>
+      '<li><a href="#'+q.parts[0]+'"><span><small>'+esc(q.source)+'</small><strong>'+esc(q.title)+'</strong><span>'+esc(q.topics)+'</span></span><b aria-hidden="true">→</b></a></li>').join("")+'</ul></section>').join("");
+  function questionNav(q){
+    const i=questions.indexOf(q);
+    function link(other,label,cls){
+      return other?'<a class="'+cls+'" href="#'+other.parts[0]+'"><small>'+label+'</small><strong>'+esc(other.title)+'</strong></a>':"";
+    }
+    return '<nav class="question-nav" aria-label="Questions">'+link(questions[i-1],"← Previous question","previous-question")+
+      link(questions[i+1],"Next question →","next-question")+'</nav>';
+  }
   function stepMenu(ex,index){
     const steps=lessons[ex.id].steps;
     const links=steps.map(([title],i)=>
@@ -239,50 +256,72 @@
   }
   function show(){
     const [id,num]=location.hash.slice(1).split("/");
-    const ex=exercises.find(e=>e.id===id)||exercises[0], lesson=lessons[ex.id];
+    const ex=exercises.find(e=>e.id===id);
+    const root=document.querySelector("#lesson"),library=document.querySelector("#library");
+    library.hidden=!!ex;
+    root.hidden=!ex;
+    document.body.classList.toggle("library-page",!ex);
+    if(!ex){
+      document.body.classList.remove("printing-exam");
+      document.title="ERD and EERD question library · ICT200";
+      document.querySelector("header a").href="index.html#erd";
+      root.replaceChildren();
+      delete root.dataset.case;
+      return;
+    }
+    const lesson=lessons[ex.id],question=questions.find(q=>q.parts.includes(ex.id));
+    document.title=question.title+" · ICT200 worked answers";
     document.body.classList.toggle("printing-exam",ex.type==="mixed");
-    document.querySelector("header a").href=ex.type==="mixed"?"index.html?exercise="+ex.id+"#erd":"index.html#erd";
+    document.querySelector("header a").href="index.html?exercise="+ex.id+"#erd";
     const index=Math.max(0,Math.min(lesson.steps.length-1,(Number.parseInt(num,10)||1)-1));
-    document.querySelector("#cases").innerHTML=exercises.map(e=>'<a href="#'+e.id+'" '+(e===ex?'aria-current="page"':"")+'>'+esc(lessons[e.id].title)+'</a>').join("");
-    const root=document.querySelector("#lesson"), open=root.dataset.case!==ex.id||root.querySelector("details")?.open;
+    const open=root.dataset.case!==ex.id||root.querySelector("details")?.open||!num;
     root.dataset.case=ex.id;
-    root.innerHTML='<h2 tabindex="-1">'+esc(lesson.title)+'</h2><div class="reading-layout">'+stepMenu(ex,index)+
+    const parts=question.parts.length>1?'<nav class="parts" aria-label="Question parts">'+question.parts.map((p,i)=>
+      '<a href="#'+p+'" '+(p===id?'aria-current="page"':'')+'>Part ('+String.fromCharCode(97+i)+') · '+esc(lessons[p].title.split(" · ")[1])+'</a>').join("")+'</nav>':"";
+    root.innerHTML='<a class="library-back" href="erd-walkthrough.html">← Question library</a><div class="question-title"><small>'+esc(question.section)+' / '+esc(question.source)+'</small><h1 tabindex="-1">'+esc(question.title)+'</h1>'+parts+'</div><div class="reading-layout">'+stepMenu(ex,index)+
       '<div class="reading-content">'+legend(ex)+'<details '+(open?"open":"")+'><summary>Read the original exercise</summary>'+
       source(ex).map(t=>'<p>'+annotate(t,ex)+'</p>').join("")+'</details>'+stepHTML(ex,index)+
-      '<div class="controls"><button type="button" id="prev">Previous step</button><button type="button" id="next" class="next">Next step</button></div></div></div>';
+      '<div class="controls"><button type="button" id="prev">Previous step</button><button type="button" id="next" class="next">Next step</button></div>'+
+      (parts && index===lesson.steps.length-1 && id===question.parts[0]?'<a class="continue-part" href="#'+question.parts[1]+'">Continue to part (b) →</a>':'')+
+      questionNav(question)+'</div></div>';
     root.querySelector(".step-menu select").onchange=event=>{location.hash=ex.id+"/"+event.target.value;};
     for(const [key,change] of [["prev",-1],["next",1]]){
       const b=document.getElementById(key); b.disabled=index+change<0||index+change>=lesson.steps.length;
       b.onclick=()=>{location.hash=ex.id+"/"+(index+1+change);};
     }
   }
-  const sheets=[];
-  for(const ex of exercises){
-    const {title,steps}=lessons[ex.id];
-    if(ex.type==="mixed"){
-      const head='<section class="sheet exam-sheet"><small>ICT200 · February 2026 · Part C, Question 1 · pp. 12–13</small>';
-      const original=source(ex);
-      for(const [i,part] of [original.slice(0,6),original.slice(6)].entries())
-        sheets.push(head+'<h2>'+esc(title)+'</h2><h3>Original question · '+(i+1)+' of 2</h3>'+legend(ex)+part.map(t=>'<p>'+annotate(t,ex)+'</p>').join("")+'</section>');
-      steps.forEach((step,i)=>sheets.push(head+stepHTML(ex,i)+'</section>'));
-      sheets.push(head+'<h2>Complete proposed ERD and EERD</h2>'+waterDiagram(ex,7)+'</section>');
-      continue;
+  window.addEventListener("beforeprint",()=>{
+    if(!document.querySelector("#library").hidden) return;
+    const current=document.querySelector("#lesson").dataset.case;
+    const printable=document.body.classList.contains("printing-exam") ? exercises.filter(e=>e.id===current) : exercises.filter(e=>e.type!=="mixed");
+    const sheets=[];
+    for(const ex of printable){
+      const {title,steps}=lessons[ex.id];
+      if(ex.type==="mixed"){
+        const head='<section class="sheet exam-sheet"><small>ICT200 · February 2026 · Part C, Question 1 · pp. 12–13</small>';
+        const original=source(ex);
+        for(const [i,part] of [original.slice(0,6),original.slice(6)].entries())
+          sheets.push(head+'<h2>'+esc(title)+'</h2><h3>Original question · '+(i+1)+' of 2</h3>'+legend(ex)+part.map(t=>'<p>'+annotate(t,ex)+'</p>').join("")+'</section>');
+        steps.forEach((step,i)=>sheets.push(head+stepHTML(ex,i)+'</section>'));
+        sheets.push(head+'<h2>Complete proposed ERD and EERD</h2>'+waterDiagram(ex,7)+'</section>');
+        continue;
+      }
+      sheets.push('<section class="sheet"><small>ICT200 · Short ERD and EERD worked answers</small><h2>'+esc(title)+'</h2><h3>Original exercise</h3>'+legend(ex)+source(ex).map(t=>'<p>'+annotate(t,ex)+'</p>').join("")+'</section>');
+      steps.forEach((step,i)=>sheets.push('<section class="sheet"><small>ICT200 · '+esc(title)+'</small>'+stepHTML(ex,i)+'</section>'));
     }
-    sheets.push('<section class="sheet"><small>ICT200 · Short ERD and EERD worked answers</small><h2>'+esc(title)+'</h2><h3>Original exercise</h3>'+legend(ex)+source(ex).map(t=>'<p>'+annotate(t,ex)+'</p>').join("")+'</section>');
-    steps.forEach((step,i)=>sheets.push('<section class="sheet"><small>ICT200 · '+esc(title)+'</small>'+stepHTML(ex,i)+'</section>'));
-  }
-  document.querySelector("#print").innerHTML=sheets.join("");
+    document.querySelector("#print").innerHTML=sheets.join("");
+  });
   function focusStep(){
     const heading=document.querySelector("#lesson .step h3");
     heading.focus({preventScroll:true});
     heading.closest(".step").scrollIntoView({block:"start"});
   }
   window.addEventListener("hashchange",()=>{
-    const before=document.querySelector("#lesson").dataset.case;
     show();
-    if(before===document.querySelector("#lesson").dataset.case || location.hash.includes("/")) focusStep();
-    else document.querySelector("#lesson h2").focus();
+    if(!document.querySelector("#library").hidden) document.querySelector("#library h1").focus();
+    else if(location.hash.includes("/")) focusStep();
+    else { document.querySelector("#lesson h1").focus({preventScroll:true}); window.scrollTo(0,0); }
   });
   show();
-  if(location.hash.includes("/")) focusStep();
+  if(document.querySelector("#library").hidden && location.hash.includes("/")) focusStep();
 })();

@@ -4,6 +4,7 @@
 }
 
 .erd-builder [hidden] { display: none !important; }
+.erd-builder-heading { display:flex; align-items:baseline; justify-content:space-between; gap:.5rem 1rem; flex-wrap:wrap; margin-bottom:.65rem; }
 .erd-builder h2 { font-size: 1.45rem; }
 .erd-workspace .erd-title { margin: 22px 0 8px; font-size: 1.2rem; }
 .erd-scenario {
