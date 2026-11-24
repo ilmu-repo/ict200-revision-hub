@@ -266,8 +266,54 @@
   .erd-subtype .erd-field { flex-wrap: wrap; font-size: .74rem; gap: 0 4px; }
 }
 
-.exam-records {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,11rem),1fr));gap:.5rem}
-.erd-board:has(.exam-records) > .erd-connector {max-width:34rem;margin:.6rem auto 1rem;padding:0;display:block}
-.erd-board:has(.exam-records) .erd-link-row {grid-template-columns:1fr 1fr 1fr;width:auto}
-.erd-board:has(.exam-records) .erd-first-end .erd-symbol {transform:scaleX(-1)}
-.erd-board:has(.exam-records) :is(.erd-last-end,.erd-line-slot) .erd-symbol {transform:none}
+.erd-scenario summary { cursor: pointer; font-weight: 650; }
+.erd-scenario[open] summary { margin-bottom: .7rem; }
+.erd-board-exam { overflow-x: auto; max-width: 100%; }
+.exam-canvas {
+  display: grid;
+  min-width: 740px;
+  grid-template-columns: minmax(145px,1fr) minmax(110px,.65fr) minmax(185px,1.25fr) minmax(110px,.65fr) minmax(145px,1fr);
+  grid-template-areas:
+    "PRODUCT_MODEL link0 PRODUCT_UNIT . ."
+    ". . link2 . ."
+    "CUSTOMER link1 RENTAL link3 AGENT"
+    ". hierarchy hierarchy hierarchy .";
+  align-items: start;
+}
+.exam-canvas > .erd-supertype { align-self: stretch; }
+.exam-canvas > [data-record^="PRODUCT_"] { align-self: end; }
+.exam-canvas .erd-hierarchy { grid-area: hierarchy; width: 100%; max-width: none; }
+.exam-canvas .erd-connector {
+  display: flex; flex-direction: column; justify-content: center;
+  align-items: stretch; align-self: start; padding: 0; gap: 0; margin-top: 18px;
+}
+.exam-canvas .erd-connector[data-from="PRODUCT_MODEL"] { align-self: end; margin: 0 0 18px; }
+.exam-canvas .erd-link-row { display: flex; width: 100%; align-items: center; }
+.exam-canvas .erd-link-row .erd-slot { min-width: 0; flex: 1; padding: 1px; min-height: 34px; font-size: .65rem; }
+.exam-canvas .erd-link-row .erd-symbol { width: 100%; height: auto; }
+.exam-canvas .erd-first-end .erd-symbol, .exam-canvas .exam-reverse .erd-last-end .erd-symbol { transform: scaleX(-1); }
+.exam-canvas .erd-last-end .erd-symbol, .exam-canvas .erd-line-slot .erd-symbol,
+.exam-canvas .exam-reverse .erd-first-end .erd-symbol { transform: none; }
+.exam-canvas .exam-reverse .erd-link-row { flex-direction: row-reverse; }
+.exam-canvas .exam-vertical {
+  position: relative; margin: 0; align-items: center;
+}
+.exam-canvas .exam-vertical .erd-verb {
+  position: absolute; top: 50%; left: calc(50% + 25px); transform: translateY(-50%);
+}
+.exam-canvas .exam-vertical .erd-link-row { flex-direction: column; width: 42px; }
+.exam-canvas .exam-vertical .erd-first-end .erd-symbol { transform: rotate(-90deg); }
+.exam-canvas .exam-vertical :is(.erd-last-end,.erd-line-slot) .erd-symbol { transform: rotate(90deg); }
+.exam-canvas .exam-vertical .erd-link-row .erd-slot { flex: none; height: 40px; }
+.exam-canvas .erd-entity { align-content: start; }
+.erd-individual:has(.exam-canvas) .erd-palette { position: static; }
+.erd-workbench:has(.exam-canvas) .erd-palette .erd-tiles { max-height: 8rem; overflow-y: auto; }
+.exam-canvas .erd-connector .erd-slot-status { font-size: .58rem; white-space: nowrap; }
+.exam-canvas .exam-vertical .erd-slot[data-result] .erd-slot-status {
+  position: absolute; right: calc(100% + 4px); top: 50%; transform: translateY(-50%); margin: 0;
+}
+@container (min-width: 940px) {
+  .erd-drag-area:has(.exam-canvas) { display: grid; grid-template-columns: 174px minmax(0,1fr); gap: 10px; align-items: start; }
+  .erd-individual:has(.exam-canvas) .erd-palette { position: sticky; top: 8px; max-height: 90vh; overflow-y: auto; }
+  .erd-drag-area .erd-board-exam { margin-top: 0; }
+}

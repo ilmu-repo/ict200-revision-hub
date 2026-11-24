@@ -241,7 +241,9 @@
 
       workspace.replaceChildren();
       const title = el("h3", "erd-title", exercise.title);
-      const scenario = el("div", "erd-scenario");
+      const mixed = exercise.type === "mixed";
+      const scenario = el(mixed ? "details" : "div", "erd-scenario");
+      if (mixed) scenario.append(el("summary",null,"Read the full exam question and practice assumptions"));
       exercise.scenario.forEach(paragraph => scenario.append(el("p", null, paragraph)));
       exercise.questions.forEach(paragraph=>scenario.append(el("p","erd-task",paragraph)));
       if (exercise.assumptions) scenario.append(el("p",null,"Practice assumptions · "+exercise.assumptions));
@@ -274,7 +276,7 @@
       selection.setAttribute("role", "status");
       targetActions.append(toSlot, clear);
       palette.append(groupNav, paletteContent, targetActions, selection);
-      const board = el("div", "erd-board " + (exercise.type === "erd" ? "erd-board-relations" : "erd-board-hierarchy"));
+      const board = el("div", "erd-board " + (mixed ? "erd-board-exam" : exercise.type === "erd" ? "erd-board-relations" : "erd-board-hierarchy"));
       board.setAttribute("role", "group");
       board.setAttribute("aria-label", "Diagram");
       const controls = el("div", "button-row");
@@ -513,21 +515,30 @@
         board.append(entity("left", ""), link("books", "booksParent", "booksChild"), entity("centre", ""),
           link("attends", "attendsChild", "attendsParent", "is attended by"), entity("right", ""));
       } else {
-        const mixed = exercise.type === "mixed";
         const [centreId,leftId,rightId] = mixed ? ["RENTAL","SALARY_DEDUCTION","AUTO_DEBIT"] : ["centre","left","right"];
+        const canvas = mixed ? el("div","exam-canvas") : board;
         if (mixed) {
-          const records = el("div","exam-records");
+          board.tabIndex = 0;
+          board.setAttribute("aria-label","TurQ Water diagram. Scroll sideways to reach all entities on a narrow screen.");
+          board.append(canvas);
           for (const id of ["PRODUCT_MODEL","PRODUCT_UNIT","CUSTOMER","AGENT"]) {
             const card = entity(id,"");
             card.prepend(el("strong","erd-verb",entityLabel(id)));
-            records.append(card);
+            card.style.gridArea = id;
+            card.dataset.record=id;
+            canvas.append(card);
           }
-          board.append(el("h4",null,"People and equipment"),records,el("h4",null,"Connect the records"));
-          exercise.links.forEach(([p,c,verb],i)=>{
+          exercise.links.forEach(([parent,child,verb],i)=>{
             const id = "link"+i;
-            board.append(link(id,id+"Parent",id+"Child",entityLabel(p)+" → "+verb+" → "+entityLabel(c)));
+            const connector=link(id,id+"Parent",id+"Child",verb);
+            connector.style.gridArea=id;
+            connector.dataset.from=parent;
+            connector.dataset.to=child;
+            // AGENT sits to the right of RENTAL. Its one-end belongs on the right.
+            if (parent==="AGENT") connector.classList.add("exam-reverse");
+            if (parent==="PRODUCT_UNIT") connector.classList.add("exam-vertical");
+            canvas.append(connector);
           });
-          board.append(el("h4",null,"Contract and payment branches"));
         }
         const hierarchy = el("div", "erd-hierarchy");
         const categoryRow = el("div", "erd-category-row");
@@ -544,9 +555,16 @@
         left.prepend(voluntaryRole);
         right.prepend(donorRole);
         subtypes.append(left,right);
-        hierarchy.append(entity(centreId, "erd-supertype"), el("div", "erd-stem"), categoryRow,
+        const supertype = entity(centreId, "erd-supertype");
+        if (mixed) {
+          supertype.prepend(el("strong","erd-verb",entityLabel(centreId)));
+          supertype.style.gridArea=centreId;
+          supertype.dataset.record=centreId;
+          canvas.append(supertype);
+        } else hierarchy.append(supertype);
+        hierarchy.append(el("div", "erd-stem"), categoryRow,
           addSlot("bars", "erd-bars-slot", "Bars"), branch, subtypes);
-        board.append(hierarchy);
+        canvas.append(hierarchy);
         updateBranchLabels = () => {
           if (mixed) {
             const hasPackage = byEntity.RENTAL.has("PAYMENT_PACKAGE");
