@@ -239,12 +239,7 @@
       '<div class="source-body">'+narrative+'</div><section class="source-tasks"><h2>Questions</h2>'+
       (water?paragraph(ex.scenario.at(-1)):'')+tasks+'</section></details>';
   }
-  const questions=[
-    {section:"Classroom practice",source:"Exercise 1",title:"Clinic appointments",topics:"Entities, keys and Crow’s Foot cardinality",parts:["clinic"]},
-    {section:"Classroom practice",source:"Exercise 2",title:"Organisation membership",topics:"Overlapping subtypes and partial completeness",parts:["roles"]},
-    {section:"Classroom practice",source:"Exercise 3",title:"Changes to membership policy",topics:"Parts (a) and (b) · Compare two sets of subtype rules",parts:["one-role","at-least-one"]},
-    {section:"Past examinations",source:"February 2026 · Part C, Question 1",title:"TurQ Water",topics:"Rental records, payment subtypes and information outputs",parts:[exam.id]}
-  ];
+  const questions=window.ICT200_ERD.questions;
   document.querySelector("#collections").innerHTML=[...new Set(questions.map(q=>q.section))].map(section=>
     '<section class="collection"><h2>'+esc(section)+'</h2><ul>'+questions.filter(q=>q.section===section).map(q=>
       '<li><a href="#'+q.parts[0]+'"><span><small>'+esc(q.source)+'</small><strong>'+esc(q.title)+'</strong><span>'+esc(q.topics)+'</span></span><b aria-hidden="true">→</b></a></li>').join("")+'</ul></section>').join("");
@@ -288,7 +283,7 @@
     const lesson=lessons[ex.id],question=questions.find(q=>q.parts.includes(ex.id));
     document.title=question.title+" · ICT200 worked answers";
     document.body.classList.toggle("printing-exam",ex.type==="mixed");
-    document.querySelector("header a").href="index.html?exercise="+ex.id+"#erd";
+    document.querySelector("header a").href="index.html#erd/"+ex.id;
     const index=Math.max(0,Math.min(lesson.steps.length-1,(Number.parseInt(num,10)||1)-1));
     const open=root.dataset.case!==ex.id||root.querySelector("details")?.open||!num;
     root.dataset.case=ex.id;

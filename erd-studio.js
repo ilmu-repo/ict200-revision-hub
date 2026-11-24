@@ -145,8 +145,12 @@
   const attributes = new Map();
   const positions = ["left","centre","right"];
   const branchLabels = {left:"Left subtype", centre:"Supertype", right:"Right subtype"};
-  const requested = new URLSearchParams(location.search).get("exercise");
-  let active = exercises.find(item=>item.id===requested)?.id || exercises[0].id;
+  const questions = [
+    {section:"Classroom practice",source:"Exercise 1",title:"Clinic appointments",topics:"Entities, keys and Crow’s Foot cardinality",parts:["clinic"]},
+    {section:"Classroom practice",source:"Exercise 2",title:"Organisation membership",topics:"Overlapping subtypes and partial completeness",parts:["roles"]},
+    {section:"Classroom practice",source:"Exercise 3",title:"Changes to membership policy",topics:"Parts (a) and (b) · Compare two sets of subtype rules",parts:["one-role","at-least-one"]},
+    {section:"Past examinations",source:"February 2026 · Part C, Question 1",title:"TurQ Water",topics:"Rental records, payment subtypes and information outputs",parts:[exam.id]}
+  ];
 
   function evaluate(exercise, placed, byEntity) {
     const candidate = answer => {
@@ -203,7 +207,7 @@
     return {errors,marks,correctAttributes,totalAttributes,correctKeys,totalKeys};
   }
 
-  function mount(parent, {completed, saveComplete}) {
+  function mount(parent, {active,completed,saveComplete}) {
     const el = (tag, className, value) => {
       const element = document.createElement(tag);
       if (className) element.className = className;
@@ -215,20 +219,53 @@
       element.type = "button";
       return element;
     };
-    const container = el("section", "card card-pad erd-builder");
-    const heading = el("h2", null, "Build the diagram");
-    heading.id = "erd-builder-heading";
-    container.setAttribute("aria-labelledby", heading.id);
-    const nav = el("div", "erd-exercise-list");
-    nav.setAttribute("role", "group");
-    nav.setAttribute("aria-label", "Diagram exercises");
+    function link(label,href,className) {
+      const anchor=el("a",className,label);
+      anchor.href=href;
+      return anchor;
+    }
+    const container = el("section", "erd-builder");
+    const question = questions.find(q=>q.parts.includes(active));
     const workspace = el("div", "erd-workspace");
-    const libraryLink=el("a",null,"Worked-answer question library");
-    libraryLink.href="erd-walkthrough.html";
-    const headingRow=el("div","erd-builder-heading");
-    headingRow.append(heading,libraryLink);
-    container.append(headingRow, nav, workspace);
     parent.append(container);
+    if (!question) {
+      container.append(el("h1","erd-library-title","ERD Studio question library"));
+      for (const section of new Set(questions.map(q=>q.section))) {
+        const collection=el("section","erd-collection");
+        const list=el("ul");
+        for (const q of questions.filter(item=>item.section===section)) {
+          const entry=el("li");
+          const anchor=link(undefined,"#erd/"+q.parts[0]);
+          anchor.append(el("small",null,q.source),el("strong",null,q.title),el("span",null,q.topics));
+          if(q.parts.every(completed)) anchor.append(el("small",null,"Completed"));
+          entry.append(anchor);
+          list.append(entry);
+        }
+        collection.append(el("h2",null,section),list);
+        container.append(collection);
+      }
+      container.append(link("Worked-answer question library","erd-walkthrough.html"));
+      return;
+    }
+    const index=questions.indexOf(question);
+    const navigation=el("nav","erd-question-nav");
+    navigation.setAttribute("aria-label","Question navigation");
+    navigation.append(link("← Question library","#erd"));
+    if(index>0) navigation.append(link("Previous question · "+questions[index-1].title,"#erd/"+questions[index-1].parts[0]));
+    if(index+1<questions.length) navigation.append(link("Next question · "+questions[index+1].title,"#erd/"+questions[index+1].parts[0]));
+    container.append(navigation,el("small","erd-question-source",question.source));
+    if (question.parts.length>1) {
+      container.append(el("h1","erd-library-title",question.title));
+      const parts=el("nav","erd-part-nav");
+      parts.setAttribute("aria-label","Question parts");
+      question.parts.forEach((id,i)=>{
+        const anchor=link("Part ("+String.fromCharCode(97+i)+")","#erd/"+id);
+        if (id===active) anchor.setAttribute("aria-current","page");
+        parts.append(anchor);
+      });
+      container.append(parts);
+    }
+    container.append(workspace);
 
     function openExercise() {
       const exercise = exercises.find(item => item.id === active);
@@ -253,7 +290,7 @@
       let updateBranchLabels = () => {};
 
       workspace.replaceChildren();
-      const title = el("h3", "erd-title", exercise.title);
+      const title = el(question.parts.length>1?"h2":"h1", "erd-title", exercise.title);
       const mixed = exercise.type === "mixed";
       const scenario = el(mixed ? "details" : "div", "erd-scenario");
       if (mixed) scenario.append(el("summary",null,"Read the full exam question and practice assumptions"));
@@ -769,31 +806,12 @@
         } else {
           feedback.append(el("p", null, exercise.explanation));
           saveComplete(exercise.id);
-          updateNav();
         }
         update();
       });
       update();
     }
 
-    const buttons = exercises.map(exercise => {
-      const option = button("erd-filter");
-      option.addEventListener("click", () => {
-        active = exercise.id;
-        updateNav();
-        openExercise();
-      });
-      nav.append(option);
-      return [exercise, option];
-    });
-    function updateNav() {
-      buttons.forEach(([exercise, option]) => {
-        option.textContent = exercise.title + (completed(exercise.id) ? " ✓" : "");
-        option.setAttribute("aria-pressed", String(exercise.id === active));
-        option.setAttribute("aria-label", exercise.title + (completed(exercise.id) ? ", completed" : ""));
-      });
-    }
-    updateNav();
     openExercise();
   }
 
@@ -831,5 +849,5 @@
     return svg;
   }
 
-  window.ICT200_ERD = {exercises, mount, makeSymbol};
+  window.ICT200_ERD = {exercises, questions, mount, makeSymbol};
 })();

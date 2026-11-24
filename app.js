@@ -132,8 +132,8 @@
     outer.append(check,feedback);if(state.correct[id])outer.append(el("span","tiny muted","  ✓ Previously answered correctly"));
     return outer;
   }
-  function renderModule(m){
-    heading(app,"Practice studio",m.title,m.summary);
+  function renderModule(m,exerciseId){
+    if(m.id!=="erd") heading(app,"Practice studio",m.title,m.summary);
     if(m.id==="sql"){
       disposeSql=sql.mount(app,{
         completed:sqlCompleted,
@@ -141,7 +141,8 @@
       });
     }
     if(m.id==="erd"){
-      erd.mount(app,{completed:erdCompleted,saveComplete(id){state.correct[`erd:diagram:${id}`]=true;saveState();}});
+      erd.mount(app,{active:exerciseId,completed:erdCompleted,saveComplete(id){state.correct[`erd:diagram:${id}`]=true;saveState();}});
+      if(exerciseId) return;
     }
     if(m.id==="normalization"){
       normalization.mount(app,{
@@ -150,19 +151,27 @@
         resetProgress(){normalization.stages.forEach(stage=>delete state.correct[`normalization:stage:${stage.id}`]);saveState();}
       });
     }
-    const note=el("div","note-strip");note.append(el("strong",null,"How to use this: "),document.createTextNode("Read each short step, then try the checkpoint. For full worked examples, use the matching ICT200 lab/lecture handout."));app.append(note);
-    m.steps.forEach((s,i)=>{const box=card("step");box.append(el("span","step-number",String(i+1)),el("h2",null,s.heading),el("p",null,s.body));app.append(box);});
-    if(m.code){const title=el("h2",null,"One statement, one clear layout");title.style.marginTop="27px";app.append(title);const code=el("pre","codebox");const lines=m.code.split("\n");lines.forEach((line,i)=>{if(i)code.append(document.createTextNode("\n"));let last=0;const tokens=/\bORDER BY\b|\bSELECT\b|\bFROM\b|\bDESC\b|\bTICKET_PRICE\b|\bTICKET_NO\b|\bTICKET\b/g;for(const hit of line.matchAll(tokens)){code.append(document.createTextNode(line.slice(last,hit.index)));const word=hit[0],cls=word==="DESC"?"order":/^(SELECT|FROM|ORDER BY)$/.test(word)?"kw":"name";code.append(el("span",cls,word));last=hit.index+word.length;}code.append(document.createTextNode(line.slice(last)));});app.append(code);app.append(el("p","muted tiny","In MySQL Workbench, select THEMEPARKDB before running this example. Compare the Result Grid and Action Output."));}
-    const head=el("div","section-head");head.append(el("h2",null,"Try it yourself"),el("span","muted tiny","Three checkpoints · retry as needed"));app.append(head);
+    if(m.id==="erd"){
+      const refresher=el("details","erd-refresher");
+      refresher.append(el("summary",null,"ERD refresher and checkpoints"));
+      app.append(refresher);
+      renderModulePractice(m,refresher);
+    } else renderModulePractice(m,app);
+  }
+  function renderModulePractice(m,panel){
+    const note=el("div","note-strip");note.append(el("strong",null,"How to use this: "),document.createTextNode("Read each short step, then try the checkpoint. For full worked examples, use the matching ICT200 lab/lecture handout."));panel.append(note);
+    m.steps.forEach((s,i)=>{const box=card("step");box.append(el("span","step-number",String(i+1)),el("h2",null,s.heading),el("p",null,s.body));panel.append(box);});
+    if(m.code){const title=el("h2",null,"One statement, one clear layout");title.style.marginTop="27px";panel.append(title);const code=el("pre","codebox");const lines=m.code.split("\n");lines.forEach((line,i)=>{if(i)code.append(document.createTextNode("\n"));let last=0;const tokens=/\bORDER BY\b|\bSELECT\b|\bFROM\b|\bDESC\b|\bTICKET_PRICE\b|\bTICKET_NO\b|\bTICKET\b/g;for(const hit of line.matchAll(tokens)){code.append(document.createTextNode(line.slice(last,hit.index)));const word=hit[0],cls=word==="DESC"?"order":/^(SELECT|FROM|ORDER BY)$/.test(word)?"kw":"name";code.append(el("span",cls,word));last=hit.index+word.length;}code.append(document.createTextNode(line.slice(last)));});panel.append(code);panel.append(el("p","muted tiny","In MySQL Workbench, select THEMEPARKDB before running this example. Compare the Result Grid and Action Output."));}
+    const head=el("div","section-head");head.append(el("h2",null,"Try it yourself"),el("span","muted tiny","Three checkpoints · retry as needed"));panel.append(head);
     m.exercises.forEach((p,j)=>{
       const id=`${m.id}:exercise${j}`,box=card("card-pad module-practice");box.append(el("span","question-type",`Checkpoint ${j+1}`),el("h2",null,p.prompt));
       const group=el("div","choices"),inputs=[];
       p.choices.forEach((choice,i)=>{const label=el("label","choice"),input=el("input");input.type="radio";input.name=id;input.value=String(i);label.append(input,el("span",null,choice));group.append(label);inputs.push(input);});box.append(group);
       const check=button("Check answer"),feedback=el("div","feedback");feedback.hidden=true;feedback.setAttribute("role","status");
       check.addEventListener("click",()=>{const pick=inputs.find(input=>input.checked);feedback.hidden=false;if(!pick){feedback.className="feedback bad";feedback.textContent="Choose an answer first.";return;}const good=Number(pick.value)===p.correct;feedback.className=`feedback ${good?"good":"bad"}`;feedback.textContent=`${good?"Correct.":"Not yet. Try again."} ${p.explanation}`;if(good){state.correct[id]=true;saveState();}});
-      box.append(check,feedback);if(state.correct[id])box.append(el("p","tiny muted","✓ Previously completed"));app.append(box);
+      box.append(check,feedback);if(state.correct[id])box.append(el("p","tiny muted","✓ Previously completed"));panel.append(box);
     });
-    const a=el("a","button secondary","← Overview");a.href="#home";const row=el("div","button-row");row.append(a);app.append(row);
+    const a=el("a","button secondary","← Overview");a.href="#home";const row=el("div","button-row");row.append(a);panel.append(row);
   }
   function renderNav(){
     DATA.chapters.forEach(ch=>{const a=el("a",null,`${ch.kicker} · ${ch.title}`);a.href=`#${ch.id}`;a.dataset.route=ch.id;chapterNav.append(a);});
@@ -172,9 +181,8 @@
     const wrapper = document.querySelector(".shell");
     const toggle = document.querySelector(".sidebar-toggle");
     const links = document.getElementById("revision-links");
-    const preference = "ict200-menu-collapsed-v1";
-    let collapsed = false;
-    try { collapsed = localStorage.getItem(preference)==="true"; } catch (_) { /* Use the default. */ }
+    let preference;
+    let collapsed;
     function paint(){
       const label = collapsed ? "Expand menu" : "Collapse menu";
       wrapper.classList.toggle("is-menu-collapsed",collapsed);
@@ -190,18 +198,41 @@
       try { localStorage.setItem(preference,String(collapsed)); } catch (_) { /* Keep it for this page. */ }
       paint();
     });
-    paint();
+    return function syncMenu(studio) {
+      const key = studio ? "ict200-erd-menu-collapsed" : "ict200-menu-collapsed-v1";
+      if (preference===key) return;
+      preference=key;
+      collapsed=studio;
+      try {
+        const saved=localStorage.getItem(key);
+        if(saved!==null) collapsed=saved==="true";
+      } catch (_) { /* Use the default. */ }
+      paint();
+    };
   }
   function render(){
     disposeSql?.();
     disposeSql=null;
-    const route=location.hash.replace(/^#/,"")||"home";app.replaceChildren();
+    const hash=location.hash.slice(1);
+    const route=hash.startsWith("erd/")?"erd":hash||"home";
+    const exercise=route==="erd" ? erd.exercises.find(item=>hash==="erd/"+item.id) : null;
+    document.body.classList.toggle("erd-studio-page",route==="erd");
+    syncMenu(route==="erd");
+    app.replaceChildren();
     document.querySelectorAll("[data-route]").forEach(a=>{if(a.dataset.route===route)a.setAttribute("aria-current","page");else a.removeAttribute("aria-current");});
     const ch=DATA.chapters.find(c=>c.id===route),module=DATA.modules.find(m=>m.id===route);
-    if(ch)renderChapter(ch);else if(module)renderModule(module);else renderHome();
-    document.title=`${ch?ch.title:module?module.title:"Revision hub"} · ICT200`;
+    if(ch)renderChapter(ch);else if(module)renderModule(module,exercise?.id);else renderHome();
+    document.title=`${exercise?exercise.title:ch?ch.title:module?module.title:"Revision hub"} · ICT200`;
+    if(route==="erd") document.getElementById("main").focus({preventScroll:true});
     window.scrollTo({top:0,behavior:"auto"});
   }
-  renderNav();setupMenu();window.addEventListener("hashchange",render);render();
+  const legacyUrl=new URL(location.href);
+  if(legacyUrl.hash==="#erd" && legacyUrl.searchParams.has("exercise")){
+    const id=legacyUrl.searchParams.get("exercise");
+    if(erd.exercises.some(item=>item.id===id)) legacyUrl.hash="erd/"+id;
+    legacyUrl.searchParams.delete("exercise");
+    history.replaceState(null,"",legacyUrl);
+  }
+  renderNav();const syncMenu=setupMenu();window.addEventListener("hashchange",render);render();
   if("serviceWorker" in navigator && location.protocol.startsWith("http"))navigator.serviceWorker.register("./sw.js").catch(()=>{});
 })();
