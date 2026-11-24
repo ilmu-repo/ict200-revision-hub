@@ -111,7 +111,7 @@
     }else{
       const model=stage===0?exercises.find(e=>e.id==="roles"):ex;
       const level=stage===0?5:stage;
-      const fields = name=>Object.entries(model.fields[name]).filter(([f])=>level>=2&&(level>=5||!["IsVolunteer","IsDonor","Role"].includes(f))).map(([f,r])=>[f,r==="pk"?"PK":r==="pkfk"?"PK FK1":""]);
+      const fields = name=>Object.entries(model.fields[name]).filter(([f])=>level>=2&&(level>=3||!["IsVolunteer","IsDonor","Role"].includes(f))).map(([f,r])=>[f,r==="pk"?"PK":r==="pkfk"?"PK FK1":""]);
       const common=fields("member");
       const end=10+34+23*common.length;
       shapes=box(294,10,212,"MEMBER",common,palette.blue[0])+box(70,248,225,"VOLUNTEER",fields("volunteer"),palette.purple[0])+box(502,248,225,"DONOR",fields("donor"),palette.purple[0]);
@@ -120,9 +120,16 @@
         shapes+=stroke('M400 '+end+'V170 M400 198V220 M182 248V220H614V248');
         shapes+='<circle cx="400" cy="184" r="14" fill="white" stroke="#a64a14" stroke-width="2.5"/>';
       }
-      if(level>=3)shapes+=svgText(400,190,model.answers[0].category,'text-anchor="middle" fill="#974310" font-weight="bold"');
+      if(level>=3){
+        const disjoint=model.answers[0].category==="d";
+        const fieldStyle='font-weight="600" fill="'+palette.green[0]+'"';
+        shapes+=svgText(400,190,model.answers[0].category,'text-anchor="middle" fill="'+palette.orange[0]+'" font-weight="bold"');
+        if(!disjoint) shapes+=svgText(376,190,"IsVolunteer",'text-anchor="end" '+fieldStyle);
+        shapes+=svgText(424,190,disjoint?"Role":"IsDonor",fieldStyle);
+        shapes+=svgText(194,241,disjoint?"Role = VOLUNTEER":"IsVolunteer = Yes",fieldStyle)
+          +svgText(602,241,disjoint?"Role = DONOR":"IsDonor = Yes",'text-anchor="end" '+fieldStyle);
+      }
       if(level>=4) shapes+='<path d="M375 198h50 '+(model.answers[0].bars==="total"?"M375 204h50":"")+'" stroke="#a51958" stroke-width="3"/>';
-      if(level===5&&model.id==="one-role")shapes+=svgText(207,242,"Role = VOLUNTEER",'font-size="13"')+svgText(475,242,"Role = DONOR",'font-size="13"');
     }
     return '<div class="diagram" tabindex="0" aria-label="Diagram, scroll horizontally on small screens"><svg viewBox="0 0 800 '+height+'" role="img" aria-label="'+esc(lessons[ex.id].title+": "+(stage===0?"original membership diagram":stage===5?"completed diagram":"diagram in progress"))+'" font-family="Arial,sans-serif" font-size="16" fill="#18344b">'+shapes+'</svg></div>';
   }
@@ -132,6 +139,10 @@
       [[0,0],[1,0],[0,1],[1,1]].map(([v,d])=>'<tr><td>'+(v?"Yes":"No")+'</td><td>'+(d?"Yes":"No")+'</td><td>'+((v+d===2&&a.category==="d")||(v+d===0&&a.bars==="total")?"No":"Yes")+'</td></tr>').join("")+'</tbody></table>';
   }
   function source(ex){return [...ex.scenario,...ex.questions];}
+  function stepMenu(ex,index){
+    return '<nav class="step-menu" aria-label="Steps for this exercise">'+lessons[ex.id].steps.map(([title],i)=>
+      '<a href="#'+ex.id+'/'+(i+1)+'" '+(i===index?'aria-current="step"':'')+'><b>'+(i+1)+'</b> '+esc(title)+'</a>').join("")+'</nav>';
+  }
   function stepHTML(ex,i){
     const steps=lessons[ex.id].steps;
     const [title,label,quote,ask,points,stage]=steps[i];
@@ -144,7 +155,7 @@
     document.querySelector("#cases").innerHTML=exercises.map(e=>'<a href="#'+e.id+'" '+(e===ex?'aria-current="page"':"")+'>'+esc(lessons[e.id].title)+'</a>').join("");
     const root=document.querySelector("#lesson"), open=root.dataset.case!==ex.id||root.querySelector("details")?.open;
     root.dataset.case=ex.id;
-    root.innerHTML='<h2>'+esc(lesson.title)+'</h2>'+legend(ex)+'<details '+(open?"open":"")+'><summary>Read the original exercise</summary>'+source(ex).map(t=>'<p>'+annotate(t,ex)+'</p>').join("")+'</details>'+stepHTML(ex,index)+'<div class="controls"><button type="button" id="prev">Previous step</button><button type="button" id="next" class="next">Next step</button></div>';
+    root.innerHTML='<h2 tabindex="-1">'+esc(lesson.title)+'</h2>'+stepMenu(ex,index)+legend(ex)+'<details '+(open?"open":"")+'><summary>Read the original exercise</summary>'+source(ex).map(t=>'<p>'+annotate(t,ex)+'</p>').join("")+'</details>'+stepHTML(ex,index)+'<div class="controls"><button type="button" id="prev">Previous step</button><button type="button" id="next" class="next">Next step</button></div>';
     for(const [key,change] of [["prev",-1],["next",1]]){
       const b=document.getElementById(key); b.disabled=index+change<0||index+change>=lesson.steps.length;
       b.onclick=()=>{location.hash=ex.id+"/"+(index+1+change);};
@@ -157,6 +168,10 @@
     steps.forEach((step,i)=>sheets.push('<section class="sheet"><small>ICT200 · '+esc(title)+'</small>'+stepHTML(ex,i)+'</section>'));
   }
   document.querySelector("#print").innerHTML=sheets.join("");
-  window.addEventListener("hashchange",()=>{show();document.querySelector(".step h3").focus();});
+  window.addEventListener("hashchange",()=>{
+    const before=document.querySelector("#lesson").dataset.case;
+    show();
+    document.querySelector(before===document.querySelector("#lesson").dataset.case?".step h3":"#lesson h2").focus();
+  });
   show();
 })();
