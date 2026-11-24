@@ -1,5 +1,6 @@
-const CACHE = "ict200-revision-v12";
+const CACHE = "ict200-revision-v13";
 const FILES = ["./", "./index.html", "./styles.css", "./content.js", "./erd-studio.css", "./erd-studio.js",
+  "./erd-walkthrough.html", "./erd-walkthrough.css", "./erd-walkthrough.js",
   "./normalization-model.js", "./normalization-workshop.js", "./normalization-workshop.css", "./app.js", "./manifest.webmanifest",
   "./sql-studio.css", "./sql-studio.js", "./sql-studio-worker.js", "./sql-studio-core.js",
   "./themepark-sql-data.js", "./sql-studio-content.js", "./vendor/sqljs/sql-wasm.js", "./vendor/sqljs/sql-wasm.wasm"];

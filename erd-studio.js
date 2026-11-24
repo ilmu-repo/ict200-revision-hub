@@ -258,7 +258,9 @@
       const dragArea = el("div","erd-drag-area");
       dragArea.append(palette,board);
       workbench.append(dragArea,controls,feedback);
-      workspace.append(title, scenario, instructions, workbench);
+      const walkthrough = el("a", "button secondary", "View step-by-step worked answer");
+      walkthrough.href = "erd-walkthrough.html#"+exercise.id;
+      workspace.append(title, scenario, walkthrough, instructions, workbench);
 
       function tileLabel(tile) {
         return tile.label;
