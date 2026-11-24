@@ -1,7 +1,37 @@
 *{box-sizing:border-box}body{margin:0;color:#18344b;background:#f7faf9;font:1rem/1.55 system-ui,Arial,sans-serif}header,main{max-width:1050px;margin:auto;padding:1.25rem}header{display:flex;justify-content:space-between;gap:1rem;border-bottom:1px solid #cbdad7;color:#45616a}a{color:#006565}h1{font-size:clamp(1.8rem,4vw,3rem);line-height:1.12;margin:.5em 0}h2,h3,p{margin:.6em 0}nav,.controls{display:flex;align-items:center;flex-wrap:wrap;gap:.55rem}nav a,button{border:1px solid #92adaa;padding:.45rem .8rem;background:white;color:#124e54;border-radius:5px;font:inherit;cursor:pointer;text-decoration:none}nav a[aria-current],.next{background:#124e54;color:white}button:disabled{opacity:.5;cursor:default}a:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid #b64c05;outline-offset:2px}details,.step{border:1px solid #c9d9d5;background:white;padding:1rem 1.25rem;border-radius:8px;margin:1rem 0}summary{cursor:pointer;font-weight:650}.clue{border-left:4px solid var(--accent);padding:.4rem .8rem;background:var(--tint);margin:.6rem 0}mark{background:var(--tint);color:var(--accent);font-weight:650}.label{color:var(--accent);font-weight:700}.diagram{overflow-x:auto}.diagram svg{display:block;width:100%;min-width:620px;max-height:370px}.diagram:focus-visible{outline:2px solid #126361}.controls{justify-content:space-between}#print{display:none}table{border-collapse:collapse;margin:.5rem 0;width:100%}td,th{text-align:left;padding:.3rem .6rem;border-bottom:1px solid #cfdbd9}caption{text-align:left;font-weight:bold}h3:focus{outline:none}
 @media(max-width:650px){header,main{padding:.8rem}.step{padding:.8rem}header{font-size:.87rem}.diagram svg{width:650px}.controls button{padding:.4rem .65rem}}
 @page{size:A4 landscape;margin:13mm}
-.step-menu{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,10rem),1fr));gap:.35rem;margin:.6rem 0 1rem}.step-menu a{display:flex;align-items:baseline;gap:.45em;font-size:.92rem;line-height:1.3}.step-menu b{font-variant-numeric:tabular-nums}.step-menu a[aria-current]{box-shadow:inset 0 -3px #62c6ab}
+@media screen {
+  header, main { max-width: 1300px; }
+  .reading-layout { display:grid; grid-template-columns:clamp(12rem,20vw,16rem) minmax(0,1fr); align-items:start; gap:1.25rem; }
+  .reading-content { min-width:0; }
+  .step-menu {
+    position:sticky; top:.65rem; display:block; padding:.7rem; margin:.5rem 0;
+    max-height:calc(100dvh - 1.3rem); overflow-y:auto;
+    background:white; border:1px solid #c9d9d5; border-radius:8px; box-shadow:0 2px 8px #18344b12;
+  }
+  .step-menu strong { display:block; font-size:.9rem; color:#405960; }
+  .step-links { display:grid; gap:.25rem; margin-top:.45rem; }
+  .step-links a { display:flex; align-items:baseline; gap:.55rem; padding:.43rem .55rem; font-size:.9rem; line-height:1.35; border-color:transparent; }
+  .step-links a:hover { border-color:#92adaa; }
+  .step-links b { font-variant-numeric:tabular-nums; }
+  .step-menu select { display:none; }
+  #lesson .step { scroll-margin-top:.65rem; }
+}
+@media screen and (max-width:850px) {
+  .reading-layout { display:block; }
+  .step-menu {
+    display:flex; flex-wrap:nowrap; align-items:center; gap:.6rem; top:0; z-index:2;
+    margin:0 0 .65rem; padding:.35rem .6rem; overflow:visible; max-height:none;
+  }
+  .step-links { display:none; }
+  .step-menu select {
+    display:block; flex:1; min-width:0; width:100%; height:2.5rem;
+    border:1px solid #92adaa; border-radius:5px; padding:0 .4rem; color:#124e54; background:white; font:inherit;
+  }
+  .step-menu select:focus-visible { outline:3px solid #b64c05; }
+  #lesson .step { scroll-margin-top:4rem; }
+}
 .colour-key{display:flex;flex-wrap:wrap;gap:.35rem;margin:.5rem 0}.colour-key mark{padding:.12rem .5rem;border-radius:.25rem;font-size:.88em}.clue{border-color:#9cb1b5;background:#f7f9fa}.teaching-points{padding-left:1.3em;margin:.45em 0 .8em}.teaching-points li+li{margin-top:.18em}mark{border-radius:.12em}
 @media print{.step:has(table){display:grid;grid-template-columns:2fr 1fr;column-gap:8mm}.step:has(table)>:not(.diagram):not(table){grid-column:1/-1}.step:has(table)>table{width:100%;align-self:center}.step:has(table)>.diagram{min-width:0}}
 @media print{body{background:white;font:12pt/1.4 Arial,sans-serif;print-color-adjust:exact;-webkit-print-color-adjust:exact}header,main{display:none}#print{display:block}.sheet{break-after:page}.sheet:last-child{break-after:auto}.sheet h2{margin:0 0 .2em}.step{border:0;padding:0;margin:.5rem 0}.diagram svg{min-width:0;width:100%;height:77mm}.diagram{overflow:visible}.clue{margin:.35em 0}table{font-size:10pt;width:75%}h3{font-size:16pt}.sheet small{color:#46616b}}

@@ -224,8 +224,13 @@
   }
   function source(ex){return [...ex.scenario,...ex.questions];}
   function stepMenu(ex,index){
-    return '<nav class="step-menu" aria-label="Steps for this exercise">'+lessons[ex.id].steps.map(([title],i)=>
-      '<a href="#'+ex.id+'/'+(i+1)+'" '+(i===index?'aria-current="step"':'')+'><b>'+(i+1)+'</b> '+esc(title)+'</a>').join("")+'</nav>';
+    const steps=lessons[ex.id].steps;
+    const links=steps.map(([title],i)=>
+      '<a href="#'+ex.id+'/'+(i+1)+'" '+(i===index?'aria-current="step"':'')+'><b>'+(i+1)+'</b> '+esc(title)+'</a>').join("");
+    const options=steps.map(([title],i)=>
+      '<option value="'+(i+1)+'" '+(i===index?'selected':'')+'>'+(i+1)+' · '+esc(title)+'</option>').join("");
+    return '<nav class="step-menu" aria-label="Steps for this exercise"><strong>Steps</strong><div class="step-links">'+links+
+      '</div><select aria-label="Jump to step">'+options+'</select></nav>';
   }
   function stepHTML(ex,i){
     const steps=lessons[ex.id].steps;
@@ -241,7 +246,11 @@
     document.querySelector("#cases").innerHTML=exercises.map(e=>'<a href="#'+e.id+'" '+(e===ex?'aria-current="page"':"")+'>'+esc(lessons[e.id].title)+'</a>').join("");
     const root=document.querySelector("#lesson"), open=root.dataset.case!==ex.id||root.querySelector("details")?.open;
     root.dataset.case=ex.id;
-    root.innerHTML='<h2 tabindex="-1">'+esc(lesson.title)+'</h2>'+stepMenu(ex,index)+legend(ex)+'<details '+(open?"open":"")+'><summary>Read the original exercise</summary>'+source(ex).map(t=>'<p>'+annotate(t,ex)+'</p>').join("")+'</details>'+stepHTML(ex,index)+'<div class="controls"><button type="button" id="prev">Previous step</button><button type="button" id="next" class="next">Next step</button></div>';
+    root.innerHTML='<h2 tabindex="-1">'+esc(lesson.title)+'</h2><div class="reading-layout">'+stepMenu(ex,index)+
+      '<div class="reading-content">'+legend(ex)+'<details '+(open?"open":"")+'><summary>Read the original exercise</summary>'+
+      source(ex).map(t=>'<p>'+annotate(t,ex)+'</p>').join("")+'</details>'+stepHTML(ex,index)+
+      '<div class="controls"><button type="button" id="prev">Previous step</button><button type="button" id="next" class="next">Next step</button></div></div></div>';
+    root.querySelector(".step-menu select").onchange=event=>{location.hash=ex.id+"/"+event.target.value;};
     for(const [key,change] of [["prev",-1],["next",1]]){
       const b=document.getElementById(key); b.disabled=index+change<0||index+change>=lesson.steps.length;
       b.onclick=()=>{location.hash=ex.id+"/"+(index+1+change);};
@@ -263,10 +272,17 @@
     steps.forEach((step,i)=>sheets.push('<section class="sheet"><small>ICT200 · '+esc(title)+'</small>'+stepHTML(ex,i)+'</section>'));
   }
   document.querySelector("#print").innerHTML=sheets.join("");
+  function focusStep(){
+    const heading=document.querySelector("#lesson .step h3");
+    heading.focus({preventScroll:true});
+    heading.closest(".step").scrollIntoView({block:"start"});
+  }
   window.addEventListener("hashchange",()=>{
     const before=document.querySelector("#lesson").dataset.case;
     show();
-    document.querySelector(before===document.querySelector("#lesson").dataset.case?".step h3":"#lesson h2").focus();
+    if(before===document.querySelector("#lesson").dataset.case || location.hash.includes("/")) focusStep();
+    else document.querySelector("#lesson h2").focus();
   });
   show();
+  if(location.hash.includes("/")) focusStep();
 })();
