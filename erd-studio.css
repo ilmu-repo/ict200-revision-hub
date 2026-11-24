@@ -406,21 +406,12 @@
 .erd-review-more summary { cursor:pointer; font-weight:650; }
 .erd-review-more .erd-review-item { margin:.55rem 0; }
 .erd-sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
-.sidebar .erd-hub-link { display:none; }
 .erd-studio-page { background:#f7f3eb; }
 .erd-studio-page .masthead { display:none; }
 .erd-studio-page .shell {
   display:block; max-width:none; padding:0 clamp(.8rem,3vw,4rem) 3rem;
 }
-.erd-studio-page .sidebar {
-  display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;
-  position:relative; top:0; padding:.5rem 0; margin-bottom:1.1rem;
-  border:0; border-bottom:2px solid #172e46; border-radius:0; box-shadow:none; background:transparent;
-}
-.erd-studio-page .sidebar-toggle { width:auto; margin:0; padding:0 .7rem; }
-.erd-studio-page .sidebar-toggle-text,.erd-studio-page .sidebar .erd-hub-link { display:block; }
-.erd-studio-page .sidebar-links { width:100%; }
-.erd-studio-page .sidebar-links:not([hidden]) { padding:.6rem; background:white; }
+.erd-studio-page .sidebar { display:none; }
 .erd-studio-page .erd-builder { min-width:0; }
 .erd-library-title,.erd-workspace h1.erd-title {
   margin:.45rem 0 1.2rem; font:600 clamp(1.875rem,3vw,2.125rem)/1.15 Georgia,serif; color:#172e46;

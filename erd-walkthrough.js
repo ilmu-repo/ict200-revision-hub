@@ -266,7 +266,6 @@
     if(!ex){
       document.body.classList.remove("printing-exam");
       document.title="ERD and EERD question library · ICT200";
-      document.querySelector("header a").href="index.html#erd";
       root.replaceChildren();
       delete root.dataset.case;
       return;
@@ -274,7 +273,6 @@
     const lesson=lessons[ex.id],question=questions.find(q=>q.parts.includes(ex.id));
     document.title=question.title+" · ICT200 worked answers";
     document.body.classList.toggle("printing-exam",ex.type==="mixed");
-    document.querySelector("header a").href="index.html#erd/"+ex.id;
     const index=Math.max(0,Math.min(lesson.steps.length-1,(Number.parseInt(num,10)||1)-1));
     const open=root.dataset.case!==ex.id||root.querySelector("details")?.open||!num;
     root.dataset.case=ex.id;
