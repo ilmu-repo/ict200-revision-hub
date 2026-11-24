@@ -1,4 +1,4 @@
-const CACHE = "ict200-revision-v18";
+const CACHE = "ict200-revision-v19";
 const FILES = ["./", "./index.html", "./styles.css", "./content.js", "./erd-studio.css", "./erd-studio.js",
   "./erd-walkthrough.html", "./erd-walkthrough.css", "./erd-walkthrough.js", "./turq-water.js",
   "./normalization-model.js", "./normalization-workshop.js", "./normalization-workshop.css", "./app.js", "./manifest.webmanifest",

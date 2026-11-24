@@ -317,3 +317,52 @@
   .erd-individual:has(.exam-canvas) .erd-palette { position: sticky; top: 8px; max-height: 90vh; overflow-y: auto; }
   .erd-drag-area .erd-board-exam { margin-top: 0; }
 }
+
+/* Keep the bank short enough to use beside the drawing. */
+.erd-palette { padding: 9px; }
+.erd-bank-heading, .erd-hint-switch, .erd-group-label { display:flex; align-items:center; }
+.erd-bank-heading { justify-content:space-between; gap:.5rem; flex-wrap:wrap; }
+.erd-bank-heading h4 { margin:0; }
+.erd-hint-switch { gap:.35rem; min-height:28px; font-size:.78rem; cursor:pointer; }
+.erd-hint-switch input { width:1rem; height:1rem; margin:0; accent-color:var(--teal-dark); }
+.erd-group-label { flex-wrap:wrap; gap:.3rem .55rem; margin:.35rem 0; font-size:.76rem; color:var(--muted); }
+.erd-group-select, .erd-attribute-search {
+  min-width:0; max-width:100%; border:1px solid #9aafb3; border-radius:5px;
+  background:white; color:var(--ink); font:inherit; font-size:.81rem; min-height:30px; padding:3px 6px;
+}
+.erd-attribute-search { width:100%; margin:.15rem 0 .3rem; }
+.erd-palette .erd-tiles { margin-top:5px; gap:4px; align-items:stretch; padding:2px; }
+.erd-workbench:has(.exam-canvas) .erd-palette .erd-tiles { max-height:clamp(10rem,30vh,18rem); }
+.erd-palette .erd-tile {
+  display:inline-flex; flex-direction:row; align-items:center; gap:.3rem; justify-content:flex-start;
+  min-height:29px; padding:3px 6px; border-radius:5px; font-size:.76rem; line-height:1.2;
+}
+.erd-palette .erd-tile .erd-symbol { width:30px; height:17px; flex:none; color:inherit; }
+.erd-palette .erd-tile[aria-pressed="true"] { outline:2px solid var(--ink); outline-offset:-2px; }
+.erd-palette .erd-tile:focus-visible { outline:3px solid #9b4900; outline-offset:-2px; }
+.erd-palette .erd-target-actions { gap:3px; margin-top:4px; }
+.erd-palette .erd-target-actions .button { padding:3px 6px; min-height:27px; }
+.erd-palette :is(.erd-selection,.erd-no-matches) { font-size:.75rem; margin:.3rem 0 0; }
+.erd-individual .erd-attribute-rows { gap:2px; }
+.erd-individual .erd-attribute-row { padding:1px 2px; }
+.erd-individual :is(.erd-attribute-name,.erd-key-chip,.erd-remove-attribute) { min-height:26px; }
+.erd-individual .erd-attribute-drop { min-height:30px; padding:3px 6px; }
+.erd-individual .erd-entity { gap:3px; padding:4px; }
+@media (pointer:coarse) {
+  .erd-palette .erd-tile, .erd-group-select, .erd-attribute-search, .erd-hint-switch { min-height:36px; }
+  .erd-individual :is(.erd-attribute-name,.erd-key-chip,.erd-remove-attribute) { min-height:32px; }
+}
+[data-hints="on"] :is([data-ink="entity"],[data-ink="PK"]) { --tile-ink:#185abd; --tile-tint:#eaf1fd; }
+[data-hints="on"] [data-ink="attribute"] { --tile-ink:#006b58; --tile-tint:#e7f5ef; }
+[data-hints="on"] :is([data-ink="subtype"],[data-ink="line"]) { --tile-ink:#7030a0; --tile-tint:#f1eaf8; }
+[data-hints="on"] :is([data-ink="FK"],[data-ink="end"],[data-ink="category"]) { --tile-ink:#a44200; --tile-tint:#fff0de; }
+[data-hints="on"] [data-ink="bars"] { --tile-ink:#ad1958; --tile-tint:#fce9f1; }
+.erd-workbench .erd-palette .erd-tile, .erd-workbench .erd-slot[data-filled="true"] {
+  color:var(--tile-ink,#293f49); background:var(--tile-tint,#f5f6f7);
+}
+.erd-workbench .erd-slot[data-filled="true"] .erd-symbol { color:inherit; }
+.erd-workbench .erd-name-slot[data-filled="true"] { color:white; background:var(--tile-ink,#354a54); }
+.erd-workbench .erd-attribute-row .erd-attribute-name { color:var(--tile-ink,#293f49); }
+.erd-workbench[data-hints="off"] :is(.erd-key-chip,.erd-role-value,.erd-discriminator-label,.erd-verb,.erd-attribute-drop) { color:#384953; }
+.erd-workbench[data-hints="off"] .erd-key-chip { background:#edf0f1; }
+.erd-workbench[data-hints="off"] :is(.erd-stem,.erd-branch::before,.erd-branch::after) { border-color:#58636a; }

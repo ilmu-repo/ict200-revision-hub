@@ -10,6 +10,15 @@
     category: "Subtype membership",
     bars: "Completeness"
   };
+  const hintPreference = "ict200.erd.colourHints";
+  let colourHints = true;
+  try { colourHints = localStorage.getItem(hintPreference) !== "off"; } catch {}
+  const subtypeTiles = new Set(["volunteer","donor","SALARY_DEDUCTION","AUTO_DEBIT"]);
+  function inkFor(id) {
+    if (subtypeTiles.has(id)) return "subtype";
+    if (id === "PK" || id === "FK") return id;
+    return tiles[id].kind;
+  }
 
   const tiles = {
     patient: {kind: "entity", label: "PATIENT"},
@@ -250,32 +259,45 @@
       const instructions = el("p", "muted",
         "Drag names and symbols to their slots. Drag attributes into an entity, then drop PK or FK onto the attribute. FK labels number themselves. You can also select a tile and its destination with a tap or Enter.");
       const palette = el("section", "erd-palette");
-      palette.append(el("h4", null, "Tiles"));
-      const groupNav = el("div", "erd-tool-row");
-      const groupButtons = new Map();
+      const paletteHeader = el("div","erd-bank-heading");
+      const hintLabel = el("label","erd-hint-switch");
+      const hintSwitch = el("input");
+      hintSwitch.type = "checkbox";
+      hintSwitch.checked = colourHints;
+      hintLabel.append(hintSwitch,document.createTextNode("Colour hints"));
+      paletteHeader.append(el("h4",null,"Tiles"),hintLabel);
+      palette.append(paletteHeader);
+      const groupLabel = el("label","erd-group-label","Tile group");
+      const groupNav = el("select","erd-group-select");
       const availableGroups = Object.keys(groups).filter(kind => exercise.palette.some(id => tiles[id].kind === kind));
-      groupNav.setAttribute("role", "group");
-      groupNav.setAttribute("aria-label", "Tile categories");
-      availableGroups.forEach(kind => {
-        const filter = button("erd-filter", groups[kind]);
-        filter.addEventListener("click", () => {
-          if (selectedSlot && specs.get(selectedSlot).kind !== kind) selectedSlot = "";
-          if (selectedTile && tiles[selectedTile].kind !== kind) selectedTile = "";
-          selectedAttribute = null;
-          currentGroup = kind;
-          update();
-        });
-        groupButtons.set(kind, filter);
-        groupNav.append(filter);
+      availableGroups.forEach(kind => groupNav.add(new Option(groups[kind],kind)));
+      groupLabel.append(groupNav);
+      const search = el("input","erd-attribute-search");
+      search.type = "search";
+      search.placeholder = "Find an attribute";
+      search.setAttribute("aria-label","Find an attribute");
+      const searchable = exercise.palette.filter(id=>tiles[id].kind==="attribute").length > 10;
+      groupNav.addEventListener("change", () => {
+        currentGroup = groupNav.value;
+        selectedSlot = selectedTile = "";
+        selectedAttribute = null;
+        search.value = "";
+        update();
       });
       const paletteContent = el("div", "erd-tiles");
+      const noMatches = el("p","erd-no-matches","No matching attributes.");
+      noMatches.setAttribute("role","status");
+      search.addEventListener("input",()=>{
+        selectedTile = "";
+        update();
+      });
       const targetActions = el("div", "erd-tool-row erd-target-actions");
       const toSlot = button("button secondary", "Go to a slot");
       const clear = button("button ghost", "Clear selected slot");
       const selection = el("p", "erd-selection");
       selection.setAttribute("role", "status");
       targetActions.append(toSlot, clear);
-      palette.append(groupNav, paletteContent, targetActions, selection);
+      palette.append(groupLabel,search,paletteContent,noMatches,targetActions,selection);
       const board = el("div", "erd-board " + (mixed ? "erd-board-exam" : exercise.type === "erd" ? "erd-board-relations" : "erd-board-hierarchy"));
       board.setAttribute("role", "group");
       board.setAttribute("aria-label", "Diagram");
@@ -287,6 +309,12 @@
       feedback.setAttribute("role", "status");
       controls.append(check, reset);
       const workbench = el("div","erd-workbench erd-individual");
+      workbench.dataset.hints = colourHints ? "on" : "off";
+      hintSwitch.addEventListener("change",()=>{
+        colourHints = hintSwitch.checked;
+        workbench.dataset.hints = colourHints ? "on" : "off";
+        try { localStorage.setItem(hintPreference,workbench.dataset.hints); } catch {}
+      });
       const dragArea = el("div","erd-drag-area");
       dragArea.append(palette,board);
       workbench.append(dragArea,controls,feedback);
@@ -448,6 +476,7 @@
             const id = entityId + ":" + name;
             const row = el("div","erd-attribute-row");
             row.dataset.attribute = name;
+            row.dataset.ink = roles.includes("PK") ? (roles.includes("FK") ? "subtype" : "PK") : roles.includes("FK") ? "FK" : "attribute";
             row.dataset.attributeEntity = entityId;
             row.dataset.result = fieldOutcome?.marks.get(id) || "";
             const field = button("erd-attribute-name" + (roles.includes("PK") ? " erd-underlined" : ""),name);
@@ -591,6 +620,7 @@
         const piece = button("erd-tile");
         piece.draggable = true;
         piece.dataset.tile = id;
+        piece.dataset.ink = inkFor(id);
         piece.setAttribute("aria-label", tileLabel(tile));
         tileContent(piece, tile);
         piece.addEventListener("click", () => {
@@ -606,11 +636,16 @@
       });
 
       function update(message) {
-        groupButtons.forEach((element, kind) => element.setAttribute("aria-pressed", String(kind === currentGroup)));
+        groupNav.value = currentGroup;
+        search.hidden = currentGroup !== "attribute" || !searchable;
+        const term = search.hidden ? "" : search.value.trim().replaceAll(" ","_").toLowerCase();
+        let visibleTiles = 0;
         paletteButtons.forEach((piece, id) => {
-          piece.hidden = tiles[id].kind !== currentGroup;
+          piece.hidden = tiles[id].kind !== currentGroup || !tiles[id].label.toLowerCase().includes(term);
+          if (!piece.hidden) visibleTiles++;
           piece.setAttribute("aria-pressed", String(selectedTile === id));
         });
+        noMatches.hidden = visibleTiles !== 0;
         slotButtons.forEach(({target, placeholder}, id) => {
           const spec = specs.get(id);
           const tile = tiles[placed[id]];
@@ -619,6 +654,7 @@
           if (tile) tileContent(target, tile, true);
           else target.append(el("span", null, placeholder));
           target.dataset.filled = String(Boolean(tile));
+          target.dataset.ink = tile ? inkFor(placed[id]) : spec.kind;
           target.draggable = Boolean(tile);
           target.dataset.result = result?.state || "";
           target.setAttribute("aria-pressed", String(selectedSlot === id));
@@ -659,6 +695,7 @@
         selectedSlot = "";
         selectedAttribute = null;
         currentGroup = "entity";
+        search.value = "";
         clearFeedback();
         update("Diagram cleared.");
       });
