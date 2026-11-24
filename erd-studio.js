@@ -152,6 +152,11 @@
     {section:"Past examinations",source:"February 2026 · Part C, Question 1",title:"TurQ Water",topics:"Rental records, payment subtypes and information outputs",parts:[exam.id]}
   ];
 
+  for (const c of globalThis.ICT200_EXAMS) {
+    exercises.push(c);
+    questions.push({section:c.term+" examination",source:c.ref,title:c.title,topics:c.chen.length?"Chen notation":c.hierarchy.length?"Crow’s Foot and specialization":"Crow’s Foot and keys",parts:[c.id]});
+  }
+
   function evaluate(exercise, placed, byEntity) {
     const candidate = answer => {
       const schema = exercise.schema || Object.fromEntries(positions.map(position => [
@@ -308,6 +313,7 @@
       anchor.href=href;
       return anchor;
     }
+    try { colourHints=localStorage.getItem(hintPreference)!=="off"; } catch {}
     const container = el("section", "erd-builder");
     const question = questions.find(q=>q.parts.includes(active));
     const workspace = el("div", "erd-workspace");
@@ -349,6 +355,8 @@
       container.append(parts);
     }
     container.append(workspace,navigation);
+    const archived=exercises.find(e=>e.id===active && e.archive);
+    if(archived)return window.ICT200_ARCHIVE.studio(workspace,archived,saveComplete);
 
     function openExercise() {
       const exercise = exercises.find(item => item.id === active);

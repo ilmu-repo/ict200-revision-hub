@@ -226,6 +226,7 @@
   }
   function source(ex){return [...ex.scenario,...ex.questions];}
   function originalExercise(ex,open){
+    if(ex.archive)return window.ICT200_ARCHIVE.paper(ex,open);
     const paragraph=t=>'<p>'+annotate(t,ex)+'</p>';
     // The printed TurQ question has an introduction, eight bullets, then a lead-in to (a) and (b).
     const water=ex.id===exam.id;
@@ -239,6 +240,7 @@
       '<div class="source-body">'+narrative+'</div><section class="source-tasks"><h2>Questions</h2>'+
       (water?paragraph(ex.scenario.at(-1)):'')+tasks+'</section></details>';
   }
+  for(const c of window.ICT200_EXAMS) lessons[c.id]={title:c.title,steps:window.ICT200_ARCHIVE.titles(c).map(t=>[t])};
   const questions=window.ICT200_ERD.questions;
   document.querySelector("#collections").innerHTML=[...new Set(questions.map(q=>q.section))].map(section=>
     '<section class="collection"><h2>'+esc(section)+'</h2><ul>'+questions.filter(q=>q.section===section).map(q=>
@@ -252,6 +254,7 @@
       link(questions[i+1],"Next question →","next-question")+'</nav>';
   }
   function stepHTML(ex,i){
+    if(ex.archive)return window.ICT200_ARCHIVE.step(ex,i);
     const steps=lessons[ex.id].steps;
     const [title,label,quote,ask,points,stage]=steps[i];
     return '<article class="step"><small>Step '+(i+1)+' of '+steps.length+'</small><h3 tabindex="-1">'+esc(title)+'</h3><blockquote class="clue"><span class="label">'+esc(label)+'</span> · <q>'+annotate(quote,ex)+'</q></blockquote><p><strong>'+esc(ask)+'</strong></p><ul class="teaching-points">'+points.map(t=>'<li>'+annotate(t,ex)+'</li>').join("")+'</ul>'+diagram(ex,stage)+(stage===5&&ex.type==="eerd"?truth(ex):"")+'</article>';
@@ -292,7 +295,12 @@
   window.addEventListener("beforeprint",()=>{
     if(!document.querySelector("#library").hidden) return;
     const current=document.querySelector("#lesson").dataset.case;
-    const printable=document.body.classList.contains("printing-exam") ? exercises.filter(e=>e.id===current) : exercises.filter(e=>e.type!=="mixed");
+    const chosen=exercises.find(e=>e.id===current);
+    if(chosen.archive){
+      document.querySelector("#print").innerHTML='<section class="sheet"><h2>'+esc(chosen.title)+'</h2>'+originalExercise(chosen,true)+'</section>'+lessons[current].steps.map((_,i)=>'<section class="sheet">'+stepHTML(chosen,i)+'</section>').join("");
+      return;
+    }
+    const printable=document.body.classList.contains("printing-exam") ? exercises.filter(e=>e.id===current) : exercises.filter(e=>e.type!=="mixed" && !e.archive);
     const sheets=[];
     for(const ex of printable){
       const {title,steps}=lessons[ex.id];

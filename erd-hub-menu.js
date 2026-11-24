@@ -50,7 +50,9 @@
   function sync() {
     const route=location.hash.slice(1);
     const visible=walker || route==="erd" || route.startsWith("erd/");
-    bar.hidden=!visible;
+    bar.hidden=false;
+    document.body.classList.toggle("hub-home",!walker && (!route || route==="home"));
+    library.hidden=!visible; context.hidden=false;
     expand(false);
     if(!visible) return;
     const libraryOpen=walker ? !window.ICT200_ERD.questions.some(q=>q.parts.includes(route.split("/")[0])) : route==="erd";

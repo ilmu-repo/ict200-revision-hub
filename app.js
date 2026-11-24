@@ -215,7 +215,7 @@
     disposeSql?.();
     disposeSql=null;
     const hash=location.hash.slice(1);
-    const sqlSet=["sql/themepark","sql/equipment-hire"].includes(hash)?hash.split("/")[1]:null;
+    const sqlSet=["sql/themepark",...Object.keys(window.ICT200_SQL_SETS).map(key=>"sql/"+key)].includes(hash)?hash.split("/")[1]:null;
     const route=sqlSet?"sql":hash.startsWith("erd/")?"erd":hash||"home";
     const exercise=route==="erd" ? erd.exercises.find(item=>hash==="erd/"+item.id) : null;
     document.body.classList.toggle("erd-studio-page",route==="erd");

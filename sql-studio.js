@@ -2,8 +2,8 @@
   "use strict";
 
   const themepark=window.ICT200_SQL_EXERCISES;
-  const hire=window.ICT200_HIRE_SQL;
-  const exercises = [...themepark,...hire.exercises];
+  const sets=window.ICT200_SQL_SETS;
+  const exercises=[...themepark,...Object.values(sets).flatMap(s=>s.exercises)];
   const STORAGE = "ict200-sql-drafts-v1";
   const priceColumns = new Set(["TICKET_PRICE","LINE_PRICE","HOUR_RATE","DAILYRATE","LINECHARGE"]);
 
@@ -32,11 +32,13 @@
     try { localStorage.removeItem(STORAGE); } catch (_) { /* Storage is unavailable. */ }
   }
 
-  function schemas(dataset,name) {
+  function schemas(dataset,name,exercise) {
     const details = element("details","sql-schemas");
-    details.append(element("summary",null,dataset===hire?"View tables and sample rows":"Schemas · "+name));
+    details.append(element("summary",null,dataset.schema?"View tables and sample rows":"Schemas · "+name));
     const list = element("div","sql-schema-list");
     dataset.tables.forEach(table=>{
+      if(exercise?.kind==="CREATE" && table.name===exercise.table)return;
+      if(exercise?.id==="farm-b")table={...table,rows:table.name==="ENCLOSURE"?[["A1","Main","North",12]]:table.name==="CUSTOMER"?table.rows:[]};
       const entry = element("details","sql-schema-table");
       const fields = element("ul");
       table.fields.forEach(field=>{
@@ -97,11 +99,16 @@
   }
   function workedQuery(sql) {
     const code=element("pre","sql-worked");
-    for(const token of sql.split(/('[^']*'|\b(?:SELECT|FROM|INNER|JOIN|ON|AS|WHERE|NOT|EXISTS|AND|ORDER|BY|DESC|ASC|CASE|WHEN|THEN|ELSE|END)\b|\b\d+(?:\.\d+)?\b)/gi)) {
-      if (/^'/.test(token)) code.append(element("span","sql-string",token));
-      else if (/^\d/.test(token)) code.append(element("span","sql-number",token));
-      else if (/^[A-Z]+$/i.test(token)) code.append(element("span","sql-keyword",token));
-      else code.append(document.createTextNode(token));
+    const tokens=sql.match(/--[^\n]*|#[^\n]*|\/\*[\s\S]*?(?:\*\/|$)|'(?:''|[^'])*(?:'|$)|"(?:""|[^"])*(?:"|$)|[A-Za-z_][\w$]*|\d+(?:\.\d+)?|\s+|./g)||[];
+    for(const token of tokens){
+      let style="";
+      if(/^(?:--|#|\/\*)/.test(token))style="comment";
+      else if(/^['"]/.test(token))style="string";
+      else if(/^\d/.test(token))style="number";
+      else if(/^(SELECT|FROM|INNER|OUTER|LEFT|RIGHT|CROSS|JOIN|USING|ON|AS|WHERE|NOT|EXISTS|AND|OR|ORDER|GROUP|BY|HAVING|LIMIT|DESC|ASC|CASE|WHEN|THEN|ELSE|END|IN|IS|NULL|BETWEEN|LIKE|DISTINCT|CREATE|TABLE|PRIMARY|FOREIGN|KEY|REFERENCES|INSERT|INTO|VALUES|UPDATE|SET|WITH|INT|VARCHAR|DATE|DECIMAL|UNSIGNED|SMALLINT)$/i.test(token))style="keyword";
+      else if(/^(COUNT|SUM|AVG|MIN|MAX|DATE_FORMAT|YEAR|CONCAT|UPPER|LOWER|ROUND|LENGTH)$/i.test(token))style="function";
+      else if(/^[a-z_]/i.test(token))style="identifier";
+      code.append(style?element("span","sql-"+style,token):document.createTextNode(token));
     }
     return code;
   }
@@ -123,16 +130,17 @@
   }
   function mount(parent, {completed, complete, setId}) {
     const state = load();
-    const set=setId || (hire.exercises.some(task=>task.id===state.active)?"equipment-hire":"themepark");
-    const guided=set==="equipment-hire";
-    const tasks=guided?hire.exercises:themepark;
+    const set=setId || Object.keys(sets).find(k=>sets[k].exercises.some(t=>t.id===state.active)) || "themepark";
+    const dataset=sets[set] || window.ICT200_THEMEPARK_SQL;
+    const guided=Boolean(sets[set]);
+    const tasks=guided?dataset.exercises:themepark;
     let current=tasks.find(task=>task.id===state.active) || tasks.find(task=>task.id===state.last?.[set]) || tasks[0];
     let worker = null, request = 0, timer = null, running = false;
     const section = element("section","card card-pad sql-studio");
-    const heading = element("h2",null,guided?"Equipment Hire · Guided practice":"THEMEPARKDB SQL Studio");
+    const heading = element("h2",null,guided?dataset.name+" · Guided practice":"THEMEPARKDB SQL Studio");
     const menu=element("nav","sql-set-nav");
     menu.setAttribute("aria-label","SQL practice sets");
-    for(const [id,label] of [["themepark","THEMEPARKDB skills"],["equipment-hire","Equipment Hire practice"]]){
+    for(const [id,label] of [["themepark","THEMEPARKDB skills"],...Object.entries(sets).map(([k,v])=>[k,v.name])]){
       const link=element("a",null,label);
       link.href="#sql/"+id;
       if(id===set) link.setAttribute("aria-current","page");
@@ -149,13 +157,18 @@
     task.append(title,prompt,conditions);
     const editor = element("textarea","sql-editor");
     editor.setAttribute("aria-label","SQL query");
-    editor.spellcheck=false;
+    editor.spellcheck=false;editor.wrap="off";
     editor.setAttribute("autocapitalize","off");
     editor.setAttribute("autocorrect","off");
     editor.maxLength=5000;
     editor.placeholder="SELECT …";
     const editorLabel = element("label","sql-editor-label","SQL query");
-    editorLabel.append(editor);
+    const frame=element("div","sql-edit-frame");
+    const highlight=element("pre","sql-highlight");highlight.setAttribute("aria-hidden","true");
+    frame.append(highlight,editor);editorLabel.append(frame);
+    function recolour(){highlight.replaceChildren(...workedQuery(editor.value+"\n").childNodes);highlight.scrollTop=editor.scrollTop;highlight.scrollLeft=editor.scrollLeft;}
+    editor.addEventListener("scroll",()=>{highlight.scrollTop=editor.scrollTop;highlight.scrollLeft=editor.scrollLeft;});
+    editor.addEventListener("input",recolour);
     const run = button("Run query","button secondary");
     const check = button("Check answer");
     const reset = button("Reset query","button ghost");
@@ -172,20 +185,27 @@
     references.setAttribute("aria-label","Database reference");
     if(guided) {
       const diagram=element("img");
-      diagram.src="equipment-hire-erd.png";
-      diagram.alt="VENUE stores EQUIPMENT. BORROWER makes HIRE. Each HIRE_LINE references one HIRE and one EQUIPMENT. Each parent can have zero or many child rows.";
+      diagram.src=dataset.diagram;
+      diagram.alt="Crow’s Foot diagram for "+dataset.name+". Table names, keys and references are also listed under View tables and sample rows.";
       const full=element("a",null,"Open full-size ERD");
       full.href=diagram.src; full.target="_blank"; full.rel="noopener";
       references.append(disclosure("View Crow’s Foot ERD",diagram,full));
     }
-    references.append(schemas(guided?hire:window.ICT200_THEMEPARK_SQL,guided?"Equipment Hire":"THEMEPARKDB"));
+    let tableReference;
     const questionArea=element("div",guided?"sql-guided-question":null);
     questionArea.append(task,references);
     const support=element("div","sql-guidance");
     section.append(menu,heading,element("p","muted",guided?
-      "A community sports programme hires sports equipment to registered borrowers. Each equipment type is stored at a venue. A hire records its borrower, date and status. Every line records one equipment type and the units hired on that line.":
+      dataset.scenario+" Each run starts with fresh sample rows. Check answer tests your SQL. For written justifications, compare your explanation with the worked PDF.":
       "Practise SELECT on a browser copy of the Week 1 lab data. Use MySQL Workbench for lab setup and data changes."),
       status,selectLabel,questionArea,editorLabel,controls,actionLabel,action,feedback,results,support);
+    if(guided){
+      const downloads=element("div","sql-downloads");
+      for(const [file,label] of [["questions","Download questions (PDF)"],["answers","Download worked answers (PDF)"]]){
+        const a=element("a",null,label);a.href="sql-papers/"+set+"-"+file+".pdf";a.download="";downloads.append(a);
+      }
+      heading.after(downloads);
+    }
     parent.append(section);
 
     function paintOptions() {
@@ -213,14 +233,20 @@
     function open(exercise) {
       if (running) stop();
       current=exercise;
+      tableReference?.remove();
+      tableReference=schemas(dataset,guided?dataset.name:"THEMEPARKDB",exercise);
+      references.append(tableReference);
       title.textContent=guided?"("+exercise.part+") "+exercise.title+" · "+exercise.marks+" marks":exercise.title;
       prompt.textContent=exercise.prompt;
       conditions.replaceChildren();
-      if(exercise.bands) conditions.append(grid({columns:["DailyRate","RateBand"],rows:exercise.bands},"Rate bands"));
+      if(exercise.kind==="CREATE")conditions.append(element("p",null,"Open View Crow’s Foot ERD to see the required keys."));
+      if(exercise.reference)conditions.append(grid({columns:exercise.reference[0],rows:exercise.reference[1]},"Given information"));
       support.replaceChildren();
       if(guided) support.append(disclosure("Show a hint",element("p",null,exercise.hint)),
         disclosure("Show worked answer",workedQuery(exercise.sql),element("p",null,exercise.explanation)));
       editor.value=typeof state.drafts[exercise.id]==="string" ? state.drafts[exercise.id] : "";
+      editor.placeholder=exercise.kind && exercise.kind!=="SELECT" ? exercise.kind+" …" : "SELECT …";
+      recolour();
       state.active=exercise.id;
       state.last={...state.last,[set]:exercise.id};
       save(state);
@@ -237,7 +263,7 @@
       if (running) stop();
       delete state.drafts[current.id];
       save(state);
-      editor.value="";
+      editor.value="";recolour();
       clearOutput("Query reset.");
       editor.focus();
     });
@@ -253,7 +279,7 @@
         return;
       }
       const count = data.actual.rows.length;
-      action.textContent=`Done. ${count} ${count===1?"row":"rows"} returned in ${data.elapsed.toFixed(1)} ms.`;
+      action.textContent=data.affected!==undefined?(current.kind==="CREATE"?"Table created. Compare its columns and keys below.":data.affected+" row(s) affected. The grid shows the table after the change."):`Done. ${count} ${count===1?"row":"rows"} returned in ${data.elapsed.toFixed(1)} ms.`;
       results.append(grid(data.actual,"Your Result Grid"));
       if (!data.expected) return;
       results.append(grid(data.expected,"Expected Result Grid"));
@@ -269,7 +295,7 @@
     function execute(grade) {
       if (running) return;
       if (!editor.value.trim()) {
-        clearOutput("Write a SELECT query first.");
+        clearOutput("Write your SQL statement first.");
         editor.focus();
         return;
       }
