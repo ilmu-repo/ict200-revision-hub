@@ -320,6 +320,7 @@
     parent.append(container);
     if (!question) {
       container.append(el("h1","erd-library-title","ERD Studio question library"));
+      container.append(link("Worked-answer question library","erd-walkthrough.html"));
       for (const section of new Set(questions.map(q=>q.section))) {
         const collection=el("section","erd-collection");
         const list=el("ul");
@@ -334,7 +335,6 @@
         collection.append(el("h2",null,section),list);
         container.append(collection);
       }
-      container.append(link("Worked-answer question library","erd-walkthrough.html"));
       return;
     }
     const index=questions.indexOf(question);

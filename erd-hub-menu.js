@@ -26,6 +26,7 @@
   panel.append(link("Revision hub overview",prefix+"home"));
   group("Lecture chapters",window.ICT200_CONTENT.chapters);
   group("Practice studios",window.ICT200_CONTENT.modules);
+  panel.append(link("ERD worked-answer library","erd-walkthrough.html"));
   const library=link("Question list",walker?"erd-walkthrough.html":"#erd");
   const context=link(walker?"ERD Studio":"ICT200 Revision Hub",prefix+(walker?"erd":"home"));
   context.className="erd-hub-context";

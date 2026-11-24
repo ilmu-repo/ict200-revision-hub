@@ -77,7 +77,7 @@
       modules.append(linkCard(m.id,"Interactive note + exercise",m.title,m.summary,`${done}/${m.exercises.length} checkpoints correct${extra}`,"module-tile"));
     });
     app.append(modules);
-    const scope=el("div","note-strip"); scope.append(el("strong",null,"What this covers: "),document.createTextNode("Final-exam concept revision follows Chapters 1–6. SQL is included as a separate lab practice stream, not represented as a current final-exam topic. These are newly written exercises, not past-paper questions.")); app.append(scope);
+    const scope=el("div","note-strip"); scope.append(el("strong",null,"What this covers: "),document.createTextNode("Revise Chapters 1–6 for the final examination. Use the ERD library for original questions from eight examination sittings. Use SQL Studio to prepare for the practical lab test.")); app.append(scope);
     const reset=button("Clear my saved progress","button ghost");
     reset.addEventListener("click",()=>{if(window.confirm("Clear this browser's ICT200 progress and saved work?")){state.correct={};state.viewed={};normalization.clearSaved();sql.clearSaved();saveState();render();}});
     app.append(reset);
