@@ -30,6 +30,8 @@
     ]}
   };
   const esc = value => String(value).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const exam = window.ICT200_TURQ;
+  lessons[exam.id] = {title:exam.title,steps:exam.steps};
   const palette={
     blue:["#185ABD","#EAF1FD"],green:["#006B58","#E7F5EF"],purple:["#7030A0","#F1EAF8"],
     orange:["#A44200","#FFF0DE"],pink:["#AD1958","#FCE9F1"]
@@ -50,6 +52,10 @@
     ]
   };
   function legend(ex){
+    if(ex.type==="mixed") return '<div class="colour-key" aria-label="Colour key">'+[
+      ["blue","Entity / supertype"],["green","Attribute / key"],["purple","Relationship / subtype"],
+      ["orange","Participation / membership"],["pink","Completeness"]
+    ].map(([c,t])=>paint(t,c,t)).join("")+'</div>';
     const entries=ex.type==="erd"?[["blue","Entity"],["green","Attribute or key"],["purple","Relationship"],["orange","Participation"]]:
       [["blue","Supertype"],["purple","Subtype"],["green","Attribute or key"],["orange","Membership"],["pink","Completeness"]];
     return '<div class="colour-key" aria-label="Colour key">'+entries.map(([c,t])=>paint(t,c,t)).join("")+'</div>';
@@ -59,6 +65,22 @@
     return '<mark style="color:'+ink+';background:'+bg+'" title="'+esc(label)+'">'+esc(t)+'</mark>';
   }
   function annotate(value,ex){
+    if(ex.type==="mixed"){
+      const patterns=[
+        ["green","Attribute / key",Object.values(ex.schema).flatMap(s=>Object.keys(s.fields)).concat(["model ID","rental account number","product serial number","IC number","start date","rental period","monthly payment amount","monthly payments","payment package","salary number","bank account number","bank name","water capacity","name","address","phone number","email","occupation","description","ID","PK","FK[123]","discriminator"]).join("|")],
+        ["pink","Completeness","must be specified|required package|rules out neither|two bars|total completeness"],
+        ["orange","Participation / membership","two payment package options|one agent only|many customers|more than one|cannot use both|exactly one|zero or many|disjoint"],
+        ["purple","Relationship / subtype","salary deductions?|auto-debit(?: deductions)?|SALARY_DEDUCTION|AUTO_DEBIT|managed by|rented by|can be rented|may rent|dashed links"],
+        ["blue","Entity / supertype","PRODUCT_MODEL|PRODUCT_UNIT|water filter (?:product )?models?|physical unit|customers?|rentals?|agents?"]
+      ];
+      const matcher = new RegExp("\\b(?:"+patterns.map(a=>"("+a[2]+")").join("|")+")\\b","gi");
+      let pos=0,html="";
+      for(const m of value.matchAll(matcher)){
+        const [col,label]=patterns[m.slice(1).findIndex(Boolean)];
+        html+=esc(value.slice(pos,m.index))+paint(m[0],col,label);pos=m.index+m[0].length;
+      }
+      return html+esc(value.slice(pos));
+    }
     const specs=rules[ex.type==="erd"?"clinic":"eerd"];
     const labels=ex.type==="erd"?["Attribute or key","Participation","Relationship","Entity"]:["Attribute or key","Completeness","Membership","Subtype","Supertype"];
     const parts=specs.map(([,pattern])=>"("+pattern+")");
@@ -85,12 +107,65 @@
       svgText(x+w/2,y+23,name,'text-anchor="middle" fill="white" font-weight="700"')+
       fields.map(([field,key],i)=>{
         const hierarchy=["MEMBER","VOLUNTEER","DONOR"].includes(name);
-        const ink=hierarchy||!key?palette.green[0]:key==="PK"?palette.blue[0]:palette.orange[0];
+        const ink=hierarchy||!key?palette.green[0]:key.includes("PK")&&key.includes("FK")?palette.purple[0]:key==="PK"?palette.blue[0]:palette.orange[0];
         return svgText(x+8,y+53+i*23,key,'font-size="12" font-weight="700" fill="'+ink+'"')+
-          svgText(x+62,y+53+i*23,field,'fill="'+ink+'" '+(key.includes("PK")?'text-decoration="underline" font-weight="700"':""));
+          svgText(x+62,y+53+i*23,field,(field.length>=15?'font-size="14" ':'')+'fill="'+ink+'" '+(key.includes("PK")?'text-decoration="underline" font-weight="700"':""));
       }).join("");
   }
+  function waterDiagram(ex,stage) {
+    const coords = {
+      PRODUCT_MODEL:[10,10,240,1], PRODUCT_UNIT:[410,10,240,1],
+      CUSTOMER:[10,195,240,2], AGENT:[810,195,240,2], RENTAL:[410,195,240,3],
+      SALARY_DEDUCTION:[105,518,280,5], AUTO_DEBIT:[685,518,280,5]
+    };
+    let drawing="";
+    const packages=stage===5||stage===6;
+    for(const [name,[x,y,w,start]] of Object.entries(coords)){
+      if(stage<start || (packages && start<3)) continue;
+      let fk=0;
+      const fields=Object.entries(ex.schema[name].fields).map(([f,r])=>{
+        const key=r==="pk"?"PK":r==="fk"?"FK"+(++fk):r==="pkfk"?"PK FK1":"";
+        return [f,key];
+      });
+      drawing+=box(x,y,w,name,fields,palette[start===5?"purple":"blue"][0]);
+    }
+    // Draw each connector from the one end to the many end in local coordinates.
+    function edge(x,y,angle,length,verb,tx,ty){
+      drawing+='<g transform="translate('+x+' '+y+') rotate('+angle+')">'+stroke('M0 0H'+length,'stroke-dasharray="6 4"')+
+        stroke('M7 -9v18 M14 -9v18 M'+length+' -9l-15 9 15 9')+
+        '<circle cx="'+(length-24)+'" cy="0" r="5" fill="white" stroke="#28666c" stroke-width="2.6"/></g>'+
+        svgText(tx,ty,verb,'text-anchor="middle" font-size="15"');
+    }
+    if(!packages) edge(250,53,0,160,"has units",330,39);
+    if(stage>=4 && !packages){
+      edge(250,264,0,160,"takes out",330,250);
+      edge(810,264,180,160,"manages",730,250);
+      edge(530,90,90,105,"appears on",592,146);
+    }
+    if(stage>=5){
+      drawing+=stroke("M530 413V439 M530 465V478 M245 518V478H825V518")+
+        '<circle cx="530" cy="452" r="13" stroke="#A44200" stroke-width="2.5" fill="white"/>';
+      if(stage>=6){
+        drawing+=svgText(530,458,"d",'text-anchor="middle" fill="#A44200" font-weight="bold"')+
+          stroke("M508 466h44 M508 471h44",'style="stroke:#AD1958"')+
+          svgText(551,457,"PAYMENT_PACKAGE",'fill="#006B58"')+
+          svgText(251,507,"Salary deduction",'fill="#006B58"')+
+          svgText(819,507,"Auto-debit",'text-anchor="end" fill="#006B58"');
+      }
+    }
+    const height=stage===1?146:stage===2?379:stage<5?427:655;
+    const width=stage===1?665:1065;
+    const view=stage===5||stage===6?"85 188 900 459":"0 0 "+width+" "+height;
+    const desc=["Model identifies a product type. Serial number identifies a unit.",
+      "Customer uses IC number. Agent uses agent ID.",
+      "Rental uses account number and references customer, unit and agent.",
+      "One model has zero or many units. One customer, unit or agent can have zero or many rentals. Each child has exactly one parent on each link.",
+      "Salary deduction and auto-debit inherit rental account number as PK and FK1.",
+      "Payment package selects exactly one subtype. Disjoint d and two bars mean total completeness."].slice(0,stage).join(" ");
+    return '<div class="diagram water-diagram" tabindex="0" aria-label="TurQ Water diagram, scroll horizontally on small screens"><svg viewBox="'+view+'" role="img" aria-label="'+esc(desc)+'" font-family="Arial,sans-serif" font-size="16" fill="#18344b">'+drawing+'</svg></div>';
+  }
   function diagram(ex, stage) {
+    if(ex.type==="mixed") return waterDiagram(ex,stage);
     let shapes="", description="", height=265;
     if(ex.type==="erd"){
       const positions=[["left",8,36,165],["centre",284,36,222],["right",615,36,173]];
@@ -160,6 +235,8 @@
   function show(){
     const [id,num]=location.hash.slice(1).split("/");
     const ex=exercises.find(e=>e.id===id)||exercises[0], lesson=lessons[ex.id];
+    document.body.classList.toggle("printing-exam",ex.type==="mixed");
+    document.querySelector("header a").href=ex.type==="mixed"?"index.html?exercise="+ex.id+"#erd":"index.html#erd";
     const index=Math.max(0,Math.min(lesson.steps.length-1,(Number.parseInt(num,10)||1)-1));
     document.querySelector("#cases").innerHTML=exercises.map(e=>'<a href="#'+e.id+'" '+(e===ex?'aria-current="page"':"")+'>'+esc(lessons[e.id].title)+'</a>').join("");
     const root=document.querySelector("#lesson"), open=root.dataset.case!==ex.id||root.querySelector("details")?.open;
@@ -173,6 +250,15 @@
   const sheets=[];
   for(const ex of exercises){
     const {title,steps}=lessons[ex.id];
+    if(ex.type==="mixed"){
+      const head='<section class="sheet exam-sheet"><small>ICT200 · February 2026 · Part C, Question 1 · pp. 12–13</small>';
+      const original=source(ex);
+      for(const [i,part] of [original.slice(0,6),original.slice(6)].entries())
+        sheets.push(head+'<h2>'+esc(title)+'</h2><h3>Original question · '+(i+1)+' of 2</h3>'+legend(ex)+part.map(t=>'<p>'+annotate(t,ex)+'</p>').join("")+'</section>');
+      steps.forEach((step,i)=>sheets.push(head+stepHTML(ex,i)+'</section>'));
+      sheets.push(head+'<h2>Complete proposed ERD and EERD</h2>'+waterDiagram(ex,7)+'</section>');
+      continue;
+    }
     sheets.push('<section class="sheet"><small>ICT200 · Short ERD and EERD worked answers</small><h2>'+esc(title)+'</h2><h3>Original exercise</h3>'+legend(ex)+source(ex).map(t=>'<p>'+annotate(t,ex)+'</p>').join("")+'</section>');
     steps.forEach((step,i)=>sheets.push('<section class="sheet"><small>ICT200 · '+esc(title)+'</small>'+stepHTML(ex,i)+'</section>'));
   }

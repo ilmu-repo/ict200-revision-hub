@@ -1,6 +1,6 @@
-const CACHE = "ict200-revision-v16";
+const CACHE = "ict200-revision-v17";
 const FILES = ["./", "./index.html", "./styles.css", "./content.js", "./erd-studio.css", "./erd-studio.js",
-  "./erd-walkthrough.html", "./erd-walkthrough.css", "./erd-walkthrough.js",
+  "./erd-walkthrough.html", "./erd-walkthrough.css", "./erd-walkthrough.js", "./turq-water.js",
   "./normalization-model.js", "./normalization-workshop.js", "./normalization-workshop.css", "./app.js", "./manifest.webmanifest",
   "./sql-studio.css", "./sql-studio.js", "./sql-studio-worker.js", "./sql-studio-core.js",
   "./themepark-sql-data.js", "./sql-studio-content.js", "./vendor/sqljs/sql-wasm.js", "./vendor/sqljs/sql-wasm.wasm"];
@@ -12,5 +12,6 @@ self.addEventListener("activate", event => {
 });
 self.addEventListener("fetch", event => {
   if (event.request.method !== "GET" || new URL(event.request.url).origin !== self.location.origin) return;
-  event.respondWith(caches.match(event.request).then(hit => hit || fetch(event.request)));
+  const studioLink = event.request.mode === "navigate" && new URL(event.request.url).pathname.endsWith("/index.html");
+  event.respondWith(caches.match(event.request,{ignoreSearch:studioLink}).then(hit => hit || fetch(event.request)));
 });

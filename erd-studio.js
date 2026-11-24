@@ -105,11 +105,39 @@
       "o", "total", ["IsVolunteer","IsDonor"], "The o circle permits both roles and two horizontal bars require at least one. At least one of IsVolunteer and IsDonor must be Yes.")
   ];
 
+  const exam = window.ICT200_TURQ;
+  const names = Object.keys(exam.schema);
+  const examFields = [...new Set(Object.values(exam.schema).flatMap(model => Object.keys(model.fields)))].sort();
+  for (const name of names) tiles[name] = {kind:"entity",label:name};
+  for (const name of examFields) tiles[name] = {kind:"attribute",label:name};
+  const examAnswer = {category:"d",bars:"total"};
+  const examSlots = names.map(name => {
+    examAnswer[name+"Name"] = name;
+    return slot(name+"Name","entity",exam.schema[name].label,"Which record holds these facts?");
+  });
+  exam.links.forEach(([parent,child,verb,field],i) => {
+    const prefix = "link"+i;
+    const label = exam.schema[parent].label+" "+verb+" ("+exam.schema[child].label+")";
+    for (const [suffix,kind,value,hint] of [
+      ["Parent","end","one","Count the parents for one child in this model."],
+      ["Child","end","zeroMany","Allow registration before a related record exists. Can there be several later?"],
+      ["Line","line","dashed","Does "+field+" form part of the child's primary key?"]
+    ]) {
+      examSlots.push(slot(prefix+suffix,kind,label+" · "+suffix,hint));
+      examAnswer[prefix+suffix] = value;
+    }
+  });
+  examSlots.push(slot("category","category","Package membership","Can the same account use both options?"),
+    slot("bars","bars","Package completeness","May an account omit its package?"));
+  exercises.push({...exam, slots:examSlots, answers:[examAnswer],
+    palette:[...names.slice().sort(),...examFields,...keyRoles,"one","zeroMany","zeroOne","oneMany","solid","dashed","d","o","partial","total"],
+    explanation:"All seven records, four ordinary relationships and the package hierarchy match the proposed model. For part (b), compare your two information outputs with the final walkthrough step."});
   const attempts = new Map();
   const attributes = new Map();
   const positions = ["left","centre","right"];
   const branchLabels = {left:"Left subtype", centre:"Supertype", right:"Right subtype"};
-  let active = exercises[0].id;
+  const requested = new URLSearchParams(location.search).get("exercise");
+  let active = exercises.find(item=>item.id===requested)?.id || exercises[0].id;
 
   function evaluate(exercise, placed, byEntity) {
     const candidate = answer => {
@@ -193,7 +221,8 @@
       const exercise = exercises.find(item => item.id === active);
       if (!attempts.has(active)) attempts.set(active, {});
       const placed = attempts.get(active);
-      if (!attributes.has(active)) attributes.set(active,Object.fromEntries(positions.map(id=>[id,new Map()])));
+      const boardPositions = exercise.schema ? Object.keys(exercise.schema) : positions;
+      if (!attributes.has(active)) attributes.set(active,Object.fromEntries(boardPositions.map(id=>[id,new Map()])));
       const byEntity = attributes.get(active);
       const entityLabel = position => exercise.schema?.[position].label || branchLabels[position];
       const specs = new Map(exercise.slots.map(item => [item.id, item]));
@@ -215,6 +244,7 @@
       const scenario = el("div", "erd-scenario");
       exercise.scenario.forEach(paragraph => scenario.append(el("p", null, paragraph)));
       exercise.questions.forEach(paragraph=>scenario.append(el("p","erd-task",paragraph)));
+      if (exercise.assumptions) scenario.append(el("p",null,"Practice assumptions · "+exercise.assumptions));
       const instructions = el("p", "muted",
         "Drag names and symbols to their slots. Drag attributes into an entity, then drop PK or FK onto the attribute. FK labels number themselves. You can also select a tile and its destination with a tap or Enter.");
       const palette = el("section", "erd-palette");
@@ -470,8 +500,7 @@
           });
         });
       }
-      if (exercise.type === "erd") {
-        function link(verb, from, to, label = verb) {
+      function link(verb, from, to, label = verb) {
           const connector = el("div", "erd-connector");
           const row = el("div", "erd-link-row");
           const line = addSlot(verb + "Line", "erd-line-slot", "Line");
@@ -479,10 +508,27 @@
             line, addSlot(to, "erd-end-slot erd-last-end", "End"));
           connector.append(el("span", "erd-verb", label), row);
           return connector;
-        }
+      }
+      if (exercise.type === "erd") {
         board.append(entity("left", ""), link("books", "booksParent", "booksChild"), entity("centre", ""),
           link("attends", "attendsChild", "attendsParent", "is attended by"), entity("right", ""));
       } else {
+        const mixed = exercise.type === "mixed";
+        const [centreId,leftId,rightId] = mixed ? ["RENTAL","SALARY_DEDUCTION","AUTO_DEBIT"] : ["centre","left","right"];
+        if (mixed) {
+          const records = el("div","exam-records");
+          for (const id of ["PRODUCT_MODEL","PRODUCT_UNIT","CUSTOMER","AGENT"]) {
+            const card = entity(id,"");
+            card.prepend(el("strong","erd-verb",entityLabel(id)));
+            records.append(card);
+          }
+          board.append(el("h4",null,"People and equipment"),records,el("h4",null,"Connect the records"));
+          exercise.links.forEach(([p,c,verb],i)=>{
+            const id = "link"+i;
+            board.append(link(id,id+"Parent",id+"Child",entityLabel(p)+" → "+verb+" → "+entityLabel(c)));
+          });
+          board.append(el("h4",null,"Contract and payment branches"));
+        }
         const hierarchy = el("div", "erd-hierarchy");
         const categoryRow = el("div", "erd-category-row");
         const leftLabel = el("span", "erd-discriminator-label");
@@ -493,15 +539,25 @@
         const subtypes = el("div", "erd-subtypes");
         const voluntaryRole = el("span", "erd-role-value");
         const donorRole = el("span", "erd-role-value");
-        const left = entity("left", "erd-subtype");
-        const right = entity("right", "erd-subtype");
+        const left = entity(leftId, "erd-subtype");
+        const right = entity(rightId, "erd-subtype");
         left.prepend(voluntaryRole);
         right.prepend(donorRole);
         subtypes.append(left,right);
-        hierarchy.append(entity("centre", "erd-supertype"), el("div", "erd-stem"), categoryRow,
+        hierarchy.append(entity(centreId, "erd-supertype"), el("div", "erd-stem"), categoryRow,
           addSlot("bars", "erd-bars-slot", "Bars"), branch, subtypes);
         board.append(hierarchy);
         updateBranchLabels = () => {
+          if (mixed) {
+            const hasPackage = byEntity.RENTAL.has("PAYMENT_PACKAGE");
+            rightLabel.textContent = hasPackage ? "PAYMENT_PACKAGE" : "";
+            for (const [id,target] of [[leftId,voluntaryRole],[rightId,donorRole]]) {
+              const branch = placed[id+"Name"];
+              const value = {SALARY_DEDUCTION:"Salary deduction",AUTO_DEBIT:"Auto-debit"}[branch];
+              target.textContent = hasPackage && value ? "PAYMENT_PACKAGE = "+value : entityLabel(id);
+            }
+            return;
+          }
           const name = side => placed[side + "Name"];
           const flag = side => name(side) === "volunteer" ? "IsVolunteer" : name(side) === "donor" ? "IsDonor" : "";
           const supertypeFields = byEntity.centre;

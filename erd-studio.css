@@ -265,3 +265,9 @@
   .erd-subtype .erd-field-slot { padding-inline: 5px; }
   .erd-subtype .erd-field { flex-wrap: wrap; font-size: .74rem; gap: 0 4px; }
 }
+
+.exam-records {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,11rem),1fr));gap:.5rem}
+.erd-board:has(.exam-records) > .erd-connector {max-width:34rem;margin:.6rem auto 1rem;padding:0;display:block}
+.erd-board:has(.exam-records) .erd-link-row {grid-template-columns:1fr 1fr 1fr;width:auto}
+.erd-board:has(.exam-records) .erd-first-end .erd-symbol {transform:scaleX(-1)}
+.erd-board:has(.exam-records) :is(.erd-last-end,.erd-line-slot) .erd-symbol {transform:none}
