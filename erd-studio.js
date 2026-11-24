@@ -176,13 +176,13 @@
       totalAttributes += expected.length;
       totalKeys += expected.reduce((sum,[,role])=>sum+(role==="pkfk" ? 2 : role==="regular" ? 0 : 1),0);
       const missing = expected.filter(([name]) => !actual.has(name)).map(([name]) => name);
-      if (missing.length) errors.push({label:model.label + " · missing attributes", hint:"Add " + missing.join(", ") + "."});
+      if (missing.length) errors.push({position, label:model.label + " · missing attributes", hint:"Add " + missing.join(", ") + "."});
       actual.forEach((roles, name) => {
         const expectedRole = model.fields[name];
         const id = position + ":" + name;
         if (!expectedRole) {
           marks.set(id,"revise");
-          errors.push({label:model.label + " · " + name, hint:"This attribute belongs in a different entity. Check whose fact it describes."});
+          errors.push({position,name,label:model.label + " · " + name, hint:"This attribute belongs in a different entity. Check whose fact it describes."});
           return;
         }
         correctAttributes++;
@@ -196,7 +196,7 @@
             expectedRole === "pk" ? "This identifier uniquely identifies a row in this entity. Mark it as the PK." :
               expectedRole === "fk" ? "This ID references a parent entity. Mark it as an FK." :
                 "This subtype inherits its identifier. It identifies the subtype row and references its supertype, so it needs both a PK and an FK label.";
-          errors.push({label:model.label + " · " + name + " key role",hint:clue});
+          errors.push({position,name,label:model.label + " · " + name + " key role",hint:clue});
         }
       });
     }
@@ -261,7 +261,7 @@
       exercise.questions.forEach(paragraph=>scenario.append(el("p","erd-task",paragraph)));
       if (exercise.assumptions) scenario.append(el("p",null,"Practice assumptions · "+exercise.assumptions));
       const instructions = el("p", "muted",
-        "Drag names and symbols to their slots. Drag attributes into an entity, then drop PK or FK onto the attribute. FK labels number themselves. You can also select a tile and its destination with a tap or Enter.");
+        "Drag a tile onto the diagram, or select the tile and then its destination. Put attributes inside their entity. Place PK or FK on an attribute. The Studio numbers each FK for you.");
       const palette = el("section", "erd-palette");
       const paletteHeader = el("div","erd-bank-heading");
       const hintLabel = el("label","erd-hint-switch");
@@ -296,7 +296,7 @@
         update();
       });
       const targetActions = el("div", "erd-tool-row erd-target-actions");
-      const toSlot = button("button secondary", "Go to a slot");
+      const toSlot = button("button secondary", "Go to a matching target");
       const clear = button("button ghost", "Clear selected slot");
       const selection = el("p", "erd-selection");
       selection.setAttribute("role", "status");
@@ -310,7 +310,8 @@
       const reset = button("button secondary", "Reset diagram");
       const feedback = el("div", "erd-feedback");
       feedback.hidden = true;
-      feedback.setAttribute("role", "status");
+      const scoreAnnouncement = el("span","erd-sr-only");
+      scoreAnnouncement.setAttribute("role","status");
       controls.append(check, reset);
       const workbench = el("div","erd-workbench erd-individual");
       workbench.dataset.hints = colourHints ? "on" : "off";
@@ -321,7 +322,7 @@
       });
       const dragArea = el("div","erd-drag-area");
       dragArea.append(palette,board);
-      workbench.append(dragArea,controls,feedback);
+      workbench.append(dragArea,controls,scoreAnnouncement,feedback);
       const walkthrough = el("a", "button secondary", "View step-by-step worked answer");
       walkthrough.href = "erd-walkthrough.html#"+exercise.id;
       workspace.append(title, scenario, walkthrough, instructions, workbench);
@@ -364,11 +365,15 @@
       }
       function clearDrag() {
         dragging = null;
+        delete workbench.dataset.dragging;
+        workbench.querySelector("[data-moving]")?.removeAttribute("data-moving");
         workbench.querySelectorAll(".erd-drag-target,.erd-drop-hover").forEach(node=>node.classList.remove("erd-drag-target","erd-drop-hover"));
       }
       function startDrag(event, id, origin = {}) {
         event.stopPropagation();
         dragging = {id,...origin};
+        workbench.dataset.dragging = tiles[id].kind;
+        event.currentTarget.dataset.moving = "true";
         event.dataTransfer.setData("text/plain",id);
         event.dataTransfer.effectAllowed = origin.slot || origin.entity ? "move" : "copy";
         workbench.querySelectorAll("[data-accept]").forEach(node=>{
@@ -403,6 +408,8 @@
         target.addEventListener("click", () => {
           if (selectedTile && tiles[selectedTile].kind === spec.kind) {
             place(spec, selectedTile);
+          } else if (selectedTile) {
+            selection.textContent = destinationPrompt(selectedTile);
           } else if (placed[id]) {
             selectedTile = "";
             selectedAttribute = null;
@@ -529,6 +536,11 @@
               drop.focus({preventScroll:true});
             });
             row.append(chips,remove);
+            if (row.dataset.result) {
+              const status = row.dataset.result === "correct" ? "Correct" : "Retry";
+              row.append(el("small","erd-attribute-status",status));
+              field.setAttribute("aria-label",field.getAttribute("aria-label")+". "+status);
+            }
             row.classList.toggle("erd-key-target",Boolean(selectedTile && tiles[selectedTile].kind==="key"));
             dropTarget(row,"key",payload=>placeKey(entityId,name,payload.id,payload));
             rows.append(row);
@@ -639,6 +651,15 @@
         paletteContent.append(piece);
       });
 
+      function destinationPrompt(id) {
+        const destinations = {
+          entity:"Choose an entity name slot.", attribute:"Choose Add attribute inside an entity.",
+          key:fieldTargets.size ? "Choose a placed attribute." : "Place an attribute first, then give it a key.",
+          end:"Choose an end of a relationship.", line:"Choose the line between two relationship ends.",
+          category:"Choose the membership circle.", bars:"Choose the completeness bars."
+        };
+        return tileLabel(tiles[id]) + " selected. " + destinations[tiles[id].kind];
+      }
       function update(message) {
         groupNav.value = currentGroup;
         search.hidden = currentGroup !== "attribute" || !searchable;
@@ -669,10 +690,10 @@
         paintAttributes();
         updateBranchLabels();
         clear.disabled = !selectedSlot || !placed[selectedSlot];
-        toSlot.disabled = !selectedTile && !selectedAttribute;
+        toSlot.disabled = (!selectedTile && !selectedAttribute) || (tiles[selectedTile]?.kind==="key" && !fieldTargets.size);
         selection.textContent = message || (selectedSlot ? "Selected slot: " + specs.get(selectedSlot).label :
           selectedAttribute ? "Selected " + selectedAttribute.id + ". Choose an entity to move it to." :
-          selectedTile ? "Selected tile: " + tileLabel(tiles[selectedTile]) + ". Choose a highlighted slot." :
+          selectedTile ? destinationPrompt(selectedTile) :
             placementMessage());
       }
       function clearFeedback() {
@@ -680,6 +701,7 @@
         fieldOutcome = null;
         feedback.replaceChildren();
         feedback.hidden = true;
+        scoreAnnouncement.textContent = "";
       }
       toSlot.addEventListener("click", () => {
         (board.querySelector(".erd-key-target .erd-attribute-name") ||
@@ -688,6 +710,7 @@
       clear.addEventListener("click", () => {
         const target = slotButtons.get(selectedSlot).target;
         delete placed[selectedSlot];
+        selectedSlot = "";
         clearFeedback();
         update("Slot cleared. Choose a tile to try again.");
         target.focus();
@@ -713,23 +736,36 @@
         const incomplete = remaining.length || fieldErrors.length;
         const fieldScore = " " + fieldOutcome.correctAttributes + "/" + fieldOutcome.totalAttributes +
           " attributes and " + fieldOutcome.correctKeys + "/" + fieldOutcome.totalKeys + " key roles correct.";
-        feedback.replaceChildren(el("strong", null, right + " of " + outcome.length + " diagram slots correct." + fieldScore));
+        const score = right + " of " + outcome.length + " diagram slots correct." + fieldScore;
+        feedback.replaceChildren(el("strong", null, score));
+        scoreAnnouncement.textContent = score;
         feedback.className = "erd-feedback feedback " + (incomplete ? "bad" : "good");
         feedback.hidden = false;
         if (incomplete) {
-          const list = el("ul", "erd-feedback-list");
-          remaining.forEach(item => {
-            const entry = el("li");
-            entry.append(el("b", null, item.label + " · " + (item.state === "missing" ? "Missing" : "Retry")),
-              el("span", null, item.hint));
-            list.append(entry);
-          });
-          fieldErrors.forEach(item=>{
-            const entry = el("li");
-            entry.append(el("b",null,item.label),el("span",null,item.hint));
-            list.append(entry);
-          });
-          feedback.append(list);
+          const issues = [
+            ...remaining.filter(item=>item.state==="revise"), ...fieldErrors.filter(item=>item.name),
+            ...remaining.filter(item=>item.state==="missing"), ...fieldErrors.filter(item=>!item.name)
+          ];
+          function reviewItem(item) {
+            const entry = el("div","erd-review-item");
+            const state = item.state === "revise" ? " · Retry" : item.state === "missing" ? " · Missing" : "";
+            const jump = button("erd-review-jump",item.label + state);
+            jump.addEventListener("click",()=>{
+              const target = item.id ? slotButtons.get(item.id).target : item.name ?
+                fieldTargets.get(item.position+":"+item.name) : attributeZones.get(item.position).drop;
+              target.focus({preventScroll:true});
+              target.scrollIntoView({block:"center",inline:"nearest"});
+            });
+            entry.append(jump,el("p",null,item.hint));
+            return entry;
+          }
+          feedback.append(el("h4",null,"Review this first"),reviewItem(issues[0]));
+          if (issues.length>1) {
+            const details=el("details","erd-review-more");
+            details.append(el("summary",null,"Other items to review ("+(issues.length-1)+")"));
+            issues.slice(1).forEach(item=>details.append(reviewItem(item)));
+            feedback.append(details);
+          }
         } else {
           feedback.append(el("p", null, exercise.explanation));
           saveComplete(exercise.id);
