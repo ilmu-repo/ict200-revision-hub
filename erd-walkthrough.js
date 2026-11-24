@@ -251,15 +251,6 @@
     return '<nav class="question-nav" aria-label="Questions">'+link(questions[i-1],"← Previous question","previous-question")+
       link(questions[i+1],"Next question →","next-question")+'</nav>';
   }
-  function stepMenu(ex,index){
-    const steps=lessons[ex.id].steps;
-    const links=steps.map(([title],i)=>
-      '<a href="#'+ex.id+'/'+(i+1)+'" '+(i===index?'aria-current="step"':'')+'><b>'+(i+1)+'</b> '+esc(title)+'</a>').join("");
-    const options=steps.map(([title],i)=>
-      '<option value="'+(i+1)+'" '+(i===index?'selected':'')+'>'+(i+1)+' · '+esc(title)+'</option>').join("");
-    return '<nav class="step-menu" aria-label="Steps for this exercise"><strong>Steps</strong><div class="step-links">'+links+
-      '</div><select aria-label="Jump to step">'+options+'</select></nav>';
-  }
   function stepHTML(ex,i){
     const steps=lessons[ex.id].steps;
     const [title,label,quote,ask,points,stage]=steps[i];
@@ -289,12 +280,12 @@
     root.dataset.case=ex.id;
     const parts=question.parts.length>1?'<nav class="parts" aria-label="Question parts">'+question.parts.map((p,i)=>
       '<a href="#'+p+'" '+(p===id?'aria-current="page"':'')+'>Part ('+String.fromCharCode(97+i)+') · '+esc(lessons[p].title.split(" · ")[1])+'</a>').join("")+'</nav>':"";
-    root.innerHTML='<a class="library-back" href="erd-walkthrough.html">← Question library</a><div class="question-title"><small>'+esc(question.section)+' / '+esc(question.source)+'</small><h1 tabindex="-1">'+esc(question.title)+'</h1>'+parts+'</div>'+
-      originalExercise(ex,open)+'<div class="reading-layout">'+stepMenu(ex,index)+'<div class="reading-content">'+stepHTML(ex,index)+
+    root.innerHTML='<div class="question-title"><small>'+esc(question.section)+' / '+esc(question.source)+'</small><h1 tabindex="-1">'+esc(question.title)+'</h1>'+parts+'</div>'+
+      originalExercise(ex,open)+'<div class="reading-content">'+stepHTML(ex,index)+
       '<div class="controls"><button type="button" id="prev">Previous step</button><button type="button" id="next" class="next">Next step</button></div>'+
       (parts && index===lesson.steps.length-1 && id===question.parts[0]?'<a class="continue-part" href="#'+question.parts[1]+'">Continue to part (b) →</a>':'')+
-      questionNav(question)+'</div></div>';
-    root.querySelector(".step-menu select").onchange=event=>{location.hash=ex.id+"/"+event.target.value;};
+      questionNav(question)+'</div>';
+    root.prepend(window.ICT200_ERD.navigationBar(question,id,lesson.steps,index,focusStep));
     for(const [key,change] of [["prev",-1],["next",1]]){
       const b=document.getElementById(key); b.disabled=index+change<0||index+change>=lesson.steps.length;
       b.onclick=()=>{location.hash=ex.id+"/"+(index+1+change);};

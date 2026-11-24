@@ -207,6 +207,90 @@
     return {errors,marks,correctAttributes,totalAttributes,correctKeys,totalKeys};
   }
 
+  function navigationBar(question, active, steps, currentStep, focusStep) {
+    const walkthrough=Boolean(steps);
+    const prefix=walkthrough ? "#" : "#erd/";
+    const bar=document.createElement("nav");
+    bar.className="erd-topbar";
+    bar.setAttribute("aria-label","Exercise navigation");
+    const panels=[];
+    function closeMenus() {
+      for(const {trigger,panel} of panels) {
+        trigger.setAttribute("aria-expanded","false");
+        panel.hidden=true;
+      }
+    }
+    function disclosure(label,id) {
+      const trigger=document.createElement("button");
+      trigger.type="button";
+      trigger.textContent=label;
+      trigger.setAttribute("aria-controls",id);
+      trigger.setAttribute("aria-expanded","false");
+      const panel=document.createElement("div");
+      panel.id=id;
+      panel.className="erd-menu-panel";
+      panel.hidden=true;
+      panels.push({trigger,panel});
+      trigger.onclick=()=>{
+        const opening=panel.hidden;
+        closeMenus();
+        panel.hidden=!opening;
+        trigger.setAttribute("aria-expanded",String(opening));
+      };
+      panel.addEventListener("click",event=>{
+        const anchor=event.target.closest("a");
+        if (!anchor || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+        closeMenus();
+        if(anchor.href===location.href) {
+          trigger.focus({preventScroll:true});
+          if(id==="erd-step-list") focusStep();
+        }
+      });
+      bar.append(trigger,panel);
+      return panel;
+    }
+    function item(panel,text,href,current) {
+      const anchor=document.createElement("a");
+      anchor.textContent=text;
+      anchor.href=href;
+      if(current) anchor.setAttribute("aria-current",current);
+      panel.append(anchor);
+    }
+    const menu=disclosure("Questions","erd-question-list");
+    item(menu,"← Question library",walkthrough?"erd-walkthrough.html":"#erd");
+    for(const section of new Set(questions.map(q=>q.section))) {
+      const heading=document.createElement("strong");
+      heading.textContent=section;
+      menu.append(heading);
+      for(const q of questions.filter(entry=>entry.section===section)) {
+        item(menu,q.title,prefix+(q===question?active:q.parts[0]),q===question?"page":null);
+      }
+    }
+    const title=document.createElement("span");
+    const part=question.parts.indexOf(active);
+    title.textContent=question.title+(question.parts.length>1?" · Part ("+String.fromCharCode(97+part)+")":"");
+    title.title=title.textContent;
+    bar.append(title);
+    if(walkthrough) {
+      const stepList=disclosure("Steps","erd-step-list");
+      steps.forEach(([name],i)=>item(stepList,(i+1)+". "+name,"#"+active+"/"+(i+1),i===currentStep?"step":null));
+    }
+    bar.addEventListener("keydown",event=>{
+      const open=panels.find(entry=>!entry.panel.hidden);
+      if(event.key==="Escape" && open) {
+        closeMenus();
+        open.trigger.focus();
+        event.preventDefault();
+      }
+    });
+    bar.addEventListener("focusout",event=>{if(!bar.contains(event.relatedTarget)) closeMenus();});
+    return bar;
+  }
+  document.addEventListener("pointerdown",event=>{
+    const expanded=document.querySelector('.erd-topbar button[aria-expanded="true"]');
+    if(expanded && !expanded.parentElement.contains(event.target)) expanded.click();
+  });
+
   function mount(parent, {active,completed,saveComplete}) {
     const el = (tag, className, value) => {
       const element = document.createElement(tag);
@@ -250,10 +334,9 @@
     const index=questions.indexOf(question);
     const navigation=el("nav","erd-question-nav");
     navigation.setAttribute("aria-label","Question navigation");
-    navigation.append(link("← Question library","#erd"));
     if(index>0) navigation.append(link("Previous question · "+questions[index-1].title,"#erd/"+questions[index-1].parts[0]));
     if(index+1<questions.length) navigation.append(link("Next question · "+questions[index+1].title,"#erd/"+questions[index+1].parts[0]));
-    container.append(navigation,el("small","erd-question-source",question.source));
+    container.append(navigationBar(question,active),el("small","erd-question-source",question.source));
     if (question.parts.length>1) {
       container.append(el("h1","erd-library-title",question.title));
       const parts=el("nav","erd-part-nav");
@@ -265,7 +348,7 @@
       });
       container.append(parts);
     }
-    container.append(workspace);
+    container.append(workspace,navigation);
 
     function openExercise() {
       const exercise = exercises.find(item => item.id === active);
@@ -849,5 +932,5 @@
     return svg;
   }
 
-  window.ICT200_ERD = {exercises, questions, mount, makeSymbol};
+  window.ICT200_ERD = {exercises, questions, mount, makeSymbol, navigationBar};
 })();
