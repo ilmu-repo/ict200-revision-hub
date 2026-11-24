@@ -1,9 +1,9 @@
-const CACHE = "ict200-revision-v27";
+const CACHE = "ict200-revision-v28";
 const FILES = ["./", "./index.html", "./styles.css", "./content.js", "./erd-studio.css", "./erd-studio.js",
   "./erd-walkthrough.html", "./erd-walkthrough.css", "./erd-navigation.css", "./erd-hub-menu.js", "./erd-walkthrough.js", "./turq-water.js",
   "./normalization-model.js", "./normalization-workshop.js", "./normalization-workshop.css", "./app.js", "./manifest.webmanifest",
   "./sql-studio.css", "./sql-studio.js", "./sql-studio-worker.js", "./sql-studio-core.js",
-  "./themepark-sql-data.js", "./sql-studio-content.js", "./vendor/sqljs/sql-wasm.js", "./vendor/sqljs/sql-wasm.wasm"];
+  "./themepark-sql-data.js", "./equipment-hire-sql.js", "./equipment-hire-erd.png", "./sql-studio-content.js", "./vendor/sqljs/sql-wasm.js", "./vendor/sqljs/sql-wasm.wasm"];
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(FILES)).then(() => self.skipWaiting()));
 });

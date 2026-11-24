@@ -8,6 +8,7 @@
       throw Error("Enter one SELECT statement of up to 5,000 characters.");
     }
     const top = [];
+    const techniques = new Set();
     let sql = "", depth = 0, ended = false;
     for (let i=0; i<source.length;) {
       const c = source[i];
@@ -47,6 +48,8 @@
       if (c===")") depth--;
       const word=/^[A-Za-z_][A-Za-z0-9_$]*/.exec(source.slice(i))?.[0];
       if (word) {
+        if (depth>0 && word.toUpperCase()==="SELECT") techniques.add("subquery");
+        if (word.toUpperCase()==="CASE") techniques.add("CASE");
         if (depth===0) top.push(word.toUpperCase());
         sql+=word;
         i+=word.length;
@@ -55,9 +58,9 @@
         i++;
       }
     }
-    if (top[0]==="USE") throw Error("THEMEPARKDB is already selected. Run your SELECT statement.");
+    if (top[0]==="USE") throw Error("The practice database is already selected. Run your SELECT statement.");
     if (!["SELECT","WITH"].includes(top[0])) throw Error("This studio runs read-only SELECT queries. Enter a SELECT, with an optional WITH clause.");
-    return {sql,ordered:top.some((word,i)=>word==="ORDER" && top[i+1]==="BY")};
+    return {sql,techniques,ordered:top.some((word,i)=>word==="ORDER" && top[i+1]==="BY")};
   }
 
   function query(db, sql) {

@@ -7,6 +7,24 @@
   font-size: .86rem;
   font-weight: 750;
 }
+.sql-set-nav { display:flex; flex-wrap:wrap; gap:.4rem; padding-bottom:1rem; }
+.sql-set-nav a { padding:.55rem .8rem; border:1px solid #a4bbbf; border-radius:6px; color:var(--ink); }
+.sql-set-nav a[aria-current] { color:white; background:var(--navy); text-decoration:none; }
+.sql-references { min-width:0; }
+.sql-references img { display:block; width:100%; height:auto; margin:.75rem 0; }
+.sql-references .sql-schema-table { min-width:0; }
+.sql-guided-question .sql-schema-list { grid-template-columns:1fr; }
+.sql-guided-question .sql-task { align-self:start; min-width:0; }
+.sql-task .sql-grid { margin-top:.75rem; }
+.sql-task .sql-grid td { white-space:normal; }
+.sql-guidance p { margin:.6rem 0; }
+.sql-worked { padding:1rem; overflow:auto; color:#dbefef; background:#152231; border-radius:.4rem; font: .95rem/1.55 Consolas,monospace; }
+.sql-worked .sql-keyword { color:#d9aaff; }
+.sql-worked .sql-string { color:#ffca9f; }
+.sql-worked .sql-number { color:#9ae6be; }
+@container (min-width:46rem) {
+  .sql-guided-question { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,1fr); gap:1rem; }
+}
 .sql-select-label, .sql-editor-label {
   display: block;
   font-weight: 750;

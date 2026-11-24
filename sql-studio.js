@@ -1,9 +1,11 @@
 (() => {
   "use strict";
 
-  const exercises = window.ICT200_SQL_EXERCISES;
+  const themepark=window.ICT200_SQL_EXERCISES;
+  const hire=window.ICT200_HIRE_SQL;
+  const exercises = [...themepark,...hire.exercises];
   const STORAGE = "ict200-sql-drafts-v1";
-  const priceColumns = new Set(["TICKET_PRICE","LINE_PRICE","HOUR_RATE"]);
+  const priceColumns = new Set(["TICKET_PRICE","LINE_PRICE","HOUR_RATE","DAILYRATE","LINECHARGE"]);
 
   function element(tag, className, text) {
     const node = document.createElement(tag);
@@ -30,11 +32,11 @@
     try { localStorage.removeItem(STORAGE); } catch (_) { /* Storage is unavailable. */ }
   }
 
-  function schemas() {
+  function schemas(dataset,name) {
     const details = element("details","sql-schemas");
-    details.append(element("summary",null,"Schemas · THEMEPARKDB"));
+    details.append(element("summary",null,dataset===hire?"View tables and sample rows":"Schemas · "+name));
     const list = element("div","sql-schema-list");
-    window.ICT200_THEMEPARK_SQL.tables.forEach(table=>{
+    dataset.tables.forEach(table=>{
       const entry = element("details","sql-schema-table");
       const fields = element("ul");
       table.fields.forEach(field=>{
@@ -44,6 +46,7 @@
         fields.append(row);
       });
       entry.append(element("summary",null,table.name),fields);
+      if(table.rows) entry.append(grid({columns:table.fields.map(f=>f.name),rows:table.rows},table.name+" sample rows"));
       list.append(entry);
     });
     details.append(list);
@@ -87,12 +90,54 @@
     return region;
   }
 
-  function mount(parent, {completed, complete}) {
+  function disclosure(label,...children) {
+    const node=element("details","sql-schemas");
+    node.append(element("summary",null,label),...children);
+    return node;
+  }
+  function workedQuery(sql) {
+    const code=element("pre","sql-worked");
+    for(const token of sql.split(/('[^']*'|\b(?:SELECT|FROM|INNER|JOIN|ON|AS|WHERE|NOT|EXISTS|AND|ORDER|BY|DESC|ASC|CASE|WHEN|THEN|ELSE|END)\b|\b\d+(?:\.\d+)?\b)/gi)) {
+      if (/^'/.test(token)) code.append(element("span","sql-string",token));
+      else if (/^\d/.test(token)) code.append(element("span","sql-number",token));
+      else if (/^[A-Z]+$/i.test(token)) code.append(element("span","sql-keyword",token));
+      else code.append(document.createTextNode(token));
+    }
+    return code;
+  }
+  function reviewClue(task,actual,expected) {
+    if(actual.columns.length!==3 || actual.columns[0].toLowerCase()!=="equipmentcode") return task.hint;
+    const values=new Map(actual.rows.map(row=>[row[0],row[2]]));
+    if(task.id==="hire-e") {
+      if(values.has("E01")) return "Your grid includes E01. It has both a cancellation and a completed hire. Which one decides whether E01 stays in this report?";
+      if(!values.has("E04")) return "E04 is missing. Its only hire was cancelled. Check whether your subquery removes equipment on every hire or only on completed hires.";
+      if(!values.has("E05")) return "E05 has no hire lines. Start from EQUIPMENT so you can include an equipment type even when it has never been hired.";
+    }
+    if(task.id==="hire-i"){
+      for(const [id,rate] of [["E02","12.00"],["E03","25.00"]]){
+        const band=expected.rows.find(row=>row[0]===id)?.[2];
+        if(values.has(id) && values.get(id)!==band) return id+" costs "+rate+". Your grid labels it "+String(values.get(id))+". Check which WHEN condition includes that exact rate.";
+      }
+    }
+    return task.hint;
+  }
+  function mount(parent, {completed, complete, setId}) {
     const state = load();
-    let current = exercises.find(item=>item.id===state.active) || exercises[0];
+    const set=setId || (hire.exercises.some(task=>task.id===state.active)?"equipment-hire":"themepark");
+    const guided=set==="equipment-hire";
+    const tasks=guided?hire.exercises:themepark;
+    let current=tasks.find(task=>task.id===state.active) || tasks.find(task=>task.id===state.last?.[set]) || tasks[0];
     let worker = null, request = 0, timer = null, running = false;
     const section = element("section","card card-pad sql-studio");
-    const heading = element("h2",null,"THEMEPARKDB SQL Studio");
+    const heading = element("h2",null,guided?"Equipment Hire · Guided practice":"THEMEPARKDB SQL Studio");
+    const menu=element("nav","sql-set-nav");
+    menu.setAttribute("aria-label","SQL practice sets");
+    for(const [id,label] of [["themepark","THEMEPARKDB skills"],["equipment-hire","Equipment Hire practice"]]){
+      const link=element("a",null,label);
+      link.href="#sql/"+id;
+      if(id===set) link.setAttribute("aria-current","page");
+      menu.append(link);
+    }
     const status = element("p","sql-studio-progress");
     const options = element("select","sql-exercise-select");
     const selectLabel = element("label","sql-select-label","Practice exercise");
@@ -100,7 +145,8 @@
     const task = element("div","sql-task");
     const title = element("h3");
     const prompt = element("p");
-    task.append(title,prompt);
+    const conditions=element("div");
+    task.append(title,prompt,conditions);
     const editor = element("textarea","sql-editor");
     editor.setAttribute("aria-label","SQL query");
     editor.spellcheck=false;
@@ -122,16 +168,31 @@
     feedback.setAttribute("role","status");
     feedback.hidden=true;
     const results = element("div","sql-grids");
-    section.append(heading,element("p","muted",
-      "Practise SELECT on a browser copy of the Week 1 lab data. This studio supports the syntax used in these exercises. Use MySQL Workbench for lab setup, data changes and other MySQL functions."),
-      status,selectLabel,task,schemas(),editorLabel,controls,actionLabel,action,feedback,results);
+    const references=element("aside","sql-references");
+    references.setAttribute("aria-label","Database reference");
+    if(guided) {
+      const diagram=element("img");
+      diagram.src="equipment-hire-erd.png";
+      diagram.alt="VENUE stores EQUIPMENT. BORROWER makes HIRE. Each HIRE_LINE references one HIRE and one EQUIPMENT. Each parent can have zero or many child rows.";
+      const full=element("a",null,"Open full-size ERD");
+      full.href=diagram.src; full.target="_blank"; full.rel="noopener";
+      references.append(disclosure("View Crow’s Foot ERD",diagram,full));
+    }
+    references.append(schemas(guided?hire:window.ICT200_THEMEPARK_SQL,guided?"Equipment Hire":"THEMEPARKDB"));
+    const questionArea=element("div",guided?"sql-guided-question":null);
+    questionArea.append(task,references);
+    const support=element("div","sql-guidance");
+    section.append(menu,heading,element("p","muted",guided?
+      "A community sports programme hires sports equipment to registered borrowers. Each equipment type is stored at a venue. A hire records its borrower, date and status. Every line records one equipment type and the units hired on that line.":
+      "Practise SELECT on a browser copy of the Week 1 lab data. Use MySQL Workbench for lab setup and data changes."),
+      status,selectLabel,questionArea,editorLabel,controls,actionLabel,action,feedback,results,support);
     parent.append(section);
 
     function paintOptions() {
       options.replaceChildren();
-      exercises.forEach((exercise,i) => options.add(new Option(`${i+1}. ${exercise.topic} — ${exercise.title}${completed(exercise.id)?" ✓":""}`,exercise.id)));
+      tasks.forEach((exercise,i) => options.add(new Option((guided?"("+exercise.part+") ":i+1+". "+exercise.topic+" — ")+exercise.title+(completed(exercise.id)?" ✓":""),exercise.id)));
       options.value=current.id;
-      status.textContent=exercises.filter(exercise=>completed(exercise.id)).length + " of " + exercises.length + " SQL exercises complete";
+      status.textContent=tasks.filter(exercise=>completed(exercise.id)).length + " of " + tasks.length + " SQL exercises complete";
     }
     function clearOutput(message) {
       action.textContent=message;
@@ -152,10 +213,16 @@
     function open(exercise) {
       if (running) stop();
       current=exercise;
-      title.textContent=exercise.title;
+      title.textContent=guided?"("+exercise.part+") "+exercise.title+" · "+exercise.marks+" marks":exercise.title;
       prompt.textContent=exercise.prompt;
+      conditions.replaceChildren();
+      if(exercise.bands) conditions.append(grid({columns:["DailyRate","RateBand"],rows:exercise.bands},"Rate bands"));
+      support.replaceChildren();
+      if(guided) support.append(disclosure("Show a hint",element("p",null,exercise.hint)),
+        disclosure("Show worked answer",workedQuery(exercise.sql),element("p",null,exercise.explanation)));
       editor.value=typeof state.drafts[exercise.id]==="string" ? state.drafts[exercise.id] : "";
       state.active=exercise.id;
+      state.last={...state.last,[set]:exercise.id};
       save(state);
       paintOptions();
       clearOutput("Run your query to see its result.");
@@ -193,7 +260,7 @@
       feedback.hidden=false;
       feedback.className="feedback sql-feedback "+(data.comparison.ok?"good":"bad");
       feedback.append(element("strong",null,data.comparison.message));
-      feedback.append(element("p",null,data.comparison.ok ? current.explanation : current.hint));
+      feedback.append(element("p",null,data.comparison.ok ? current.explanation : reviewClue(current,data.actual,data.expected)));
       if (data.comparison.ok) {
         complete(current.id);
         paintOptions();

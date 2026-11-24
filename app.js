@@ -136,6 +136,7 @@
     if(m.id!=="erd") heading(app,"Practice studio",m.title,m.summary);
     if(m.id==="sql"){
       disposeSql=sql.mount(app,{
+        setId:exerciseId,
         completed:sqlCompleted,
         complete(id){state.correct[`sql:practice:${id}`]=true;saveState();}
       });
@@ -151,9 +152,9 @@
         resetProgress(){normalization.stages.forEach(stage=>delete state.correct[`normalization:stage:${stage.id}`]);saveState();}
       });
     }
-    if(m.id==="erd"){
+    if(m.id==="erd" || m.id==="sql"){
       const refresher=el("details","erd-refresher");
-      refresher.append(el("summary",null,"ERD refresher and checkpoints"));
+      refresher.append(el("summary",null,m.id==="erd"?"ERD refresher and checkpoints":"SQL refresher and THEMEPARKDB checkpoints"));
       app.append(refresher);
       renderModulePractice(m,refresher);
     } else renderModulePractice(m,app);
@@ -214,14 +215,15 @@
     disposeSql?.();
     disposeSql=null;
     const hash=location.hash.slice(1);
-    const route=hash.startsWith("erd/")?"erd":hash||"home";
+    const sqlSet=["sql/themepark","sql/equipment-hire"].includes(hash)?hash.split("/")[1]:null;
+    const route=sqlSet?"sql":hash.startsWith("erd/")?"erd":hash||"home";
     const exercise=route==="erd" ? erd.exercises.find(item=>hash==="erd/"+item.id) : null;
     document.body.classList.toggle("erd-studio-page",route==="erd");
     syncMenu(route==="erd");
     app.replaceChildren();
     document.querySelectorAll("[data-route]").forEach(a=>{if(a.dataset.route===route)a.setAttribute("aria-current","page");else a.removeAttribute("aria-current");});
     const ch=DATA.chapters.find(c=>c.id===route),module=DATA.modules.find(m=>m.id===route);
-    if(ch)renderChapter(ch);else if(module)renderModule(module,exercise?.id);else renderHome();
+    if(ch)renderChapter(ch);else if(module)renderModule(module,sqlSet || exercise?.id);else renderHome();
     document.title=`${exercise?exercise.title:ch?ch.title:module?module.title:"Revision hub"} · ICT200`;
     if(route==="erd") document.getElementById("main").focus({preventScroll:true});
     window.scrollTo({top:0,behavior:"auto"});
