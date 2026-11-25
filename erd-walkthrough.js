@@ -1,6 +1,33 @@
 (() => {
   "use strict";
   const exercises = window.ICT200_ERD.exercises;
+  const hintPreference = "ict200.erd.colourHints";
+  let hintsOn = true;
+  try { hintsOn = localStorage.getItem(hintPreference) !== "off"; } catch {}
+  function displayHints(enabled) {
+    hintsOn = enabled;
+    document.body.dataset.walkthroughHints = enabled ? "on" : "off";
+    const input = document.getElementById("walkthrough-hints");
+    if (input) input.checked = enabled;
+  }
+  function hintControl() {
+    const label = document.createElement("label");
+    label.className = "walkthrough-hint-switch";
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.id = "walkthrough-hints";
+    input.checked = hintsOn;
+    input.addEventListener("change", () => {
+      displayHints(input.checked);
+      try { localStorage.setItem(hintPreference, hintsOn ? "on" : "off"); } catch {}
+    });
+    label.append(input, "Colour hints");
+    return label;
+  }
+  displayHints(hintsOn);
+  window.addEventListener("storage", event => {
+    if (event.key === hintPreference || event.key === null) displayHints(event.newValue !== "off");
+  });
   const lessons = {
     clinic: {title:"1 · Clinic appointments", steps:[
       ["Find the three records","Entities","patients, doctors and appointments","What needs its own record?",["Draw PATIENT, DOCTOR and APPOINTMENT.","Give each visit its own APPOINTMENT record."],1],
@@ -286,7 +313,9 @@
       '<div class="controls"><button type="button" id="prev">Previous step</button><button type="button" id="next" class="next">Next step</button></div>'+
       (parts && index===lesson.steps.length-1 && id===question.parts[0]?'<a class="continue-part" href="#'+question.parts[1]+'">Continue to part (b) →</a>':'')+
       questionNav(question)+'</div>';
-    root.prepend(window.ICT200_ERD.navigationBar(question,id,lesson.steps,index,focusStep));
+    const navigation = window.ICT200_ERD.navigationBar(question,id,lesson.steps,index,focusStep);
+    navigation.append(hintControl());
+    root.prepend(navigation);
     for(const [key,change] of [["prev",-1],["next",1]]){
       const b=document.getElementById(key); b.disabled=index+change<0||index+change>=lesson.steps.length;
       b.onclick=()=>{location.hash=ex.id+"/"+(index+1+change);};

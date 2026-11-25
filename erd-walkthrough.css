@@ -98,3 +98,20 @@
   .library-page .collection li { margin:.5rem 0; }
   .library-page .collection a span span,.library-page .collection a strong { display:block; }
 }
+.walkthrough-hint-switch {
+  display: inline-flex; align-items: center; gap: .35rem; flex: none;
+  min-height: 2.75rem; cursor: pointer;
+}
+.walkthrough-hint-switch input { margin: 0; width: 1rem; height: 1rem; }
+body[data-walkthrough-hints="off"] :is(.colour-key, .arc-legend, .source-scan i) {
+  display: none;
+}
+body[data-walkthrough-hints="off"] :is(mark, .arc-entity, .arc-attr, .arc-subtype, .arc-rule, .arc-key) {
+  color: inherit !important; background: transparent !important; padding: 0;
+}
+body[data-walkthrough-hints="off"] mark {
+  font-weight: inherit; pointer-events: none;
+}
+body[data-walkthrough-hints="off"] :is(.diagram, .arc-figure) svg {
+  filter: grayscale(1);
+}
