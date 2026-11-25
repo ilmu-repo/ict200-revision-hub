@@ -11,3 +11,34 @@
 
 @media screen and (min-width:900px){html[data-look=paper] .shell:has(.flashcard),html[data-look=paper] .shell:has(.overview-top){max-width:1040px}html[data-look=paper] .overview-top{grid-template-columns:1fr 1fr}html[data-look=paper] .chapter-tile{border-left:4px solid #826b47;border-top:1px solid #bdb3a0}html[data-look=paper] .reading-content{max-width:1100px;margin-inline:auto}}
 @media screen{html[data-look=night] .sql-set-nav a[aria-current=page],html[data-look=night] .step-number{background:#38546b;color:#fff}html[data-look=night] .erd-hub-nav.erd-hub-nav,html[data-look=night] #erd-hub-destinations{background:#182637;color:#eff5fc}html[data-look=night] .sql-grid caption{background:#283e51;color:#f1f5fa}}
+
+/* Past-paper canvases share the compact tile bank and entity colours of the other ERD exercises. */
+.arc-workbench .erd-board { min-width: 0; padding: 0; }
+.arc-workbench .arc-bank { max-height: 19rem; margin: .4rem 0; overflow: auto; }
+.arc-workbench .arc-bank .erd-tile { border: 1px solid #8193a4; }
+.arc-workbench .arc-jump { padding: .35rem .55rem; font-size: .85rem; }
+.arc-workbench .arc-status { min-height: 1.5em; }
+.arc-figure { background: white; color: #18344b; }
+.arc-figure svg { display: block; flex: none; }
+.arc-figure .arc-target { cursor: pointer; }
+.arc-figure .arc-target polygon, .arc-figure .arc-target ellipse,
+.arc-figure .arc-target circle, .arc-figure .arc-target rect {
+  fill: #f3f7fc; stroke: #39546b; stroke-width: 1.4; stroke-dasharray: 3 2;
+}
+.arc-figure .arc-target text { fill: #163e5b; font-weight: 700; text-decoration: none; }
+.arc-figure .arc-target:focus { outline: 2px solid #935016; }
+.arc-figure .arc-target.is-right :is(polygon,ellipse,circle,rect) { fill: #e5f4ea; stroke: #206344; }
+.arc-figure .arc-target.needs-work :is(polygon,ellipse,circle,rect) { fill: #fae8e6; stroke: #9a342d; }
+.arc-figure .arc-target.is-right text { fill: #206344; }
+.arc-figure .arc-target.needs-work text { fill: #9a342d; }
+.arc-legend .arc-bars, mark.arc-bars { color: #ad1958; background: #fce9f1; }
+.arc-no-hints .archive-paper :is(.arc-legend,.source-scan i) { display: none; }
+body[data-walkthrough-hints="off"] .arc-bars { color: inherit; background: transparent; }
+@media screen {
+  .step .arc-figure { margin-top: 1rem; padding: 1rem .6rem; }
+  .arc-workbench .arc-figure { max-height: 76vh; }
+}
+.arc-legend .arc-entity, mark.arc-entity { color: #185abd; background: #eaf1fd; }
+.arc-legend .arc-attr, mark.arc-attr { color: #006b58; background: #e7f5ef; }
+.arc-legend .arc-subtype, mark.arc-subtype { color: #7030a0; background: #f1eaf8; }
+.arc-legend .arc-rule, mark.arc-rule { color: #a44200; background: #fff0de; }
