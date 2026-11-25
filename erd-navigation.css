@@ -84,3 +84,15 @@
   .erd-workbench.erd-individual .erd-palette { top:calc(var(--erd-hub-height) + 4rem); max-height:calc(100dvh - var(--erd-hub-height) - 4.5rem); overflow:auto; }
 }
 @media print { .erd-hub-nav,.erd-topbar { display:none; } }
+.arc-rules, .arc-guidance, .arc-extension, .arc-layout-option { margin-block: 1rem; }
+.arc-rules fieldset { margin: .8rem 0; padding: .7rem 1rem; border: 1px solid currentColor; border-radius: .4rem; }
+.arc-rules legend { font-weight: 650; padding-inline: .3rem; }
+.arc-rules fieldset label { display: block; margin: .4rem 0; cursor: pointer; }
+.arc-rules fieldset small { display: block; font-weight: 650; }
+.arc-rules input, .arc-layout-option input { accent-color: var(--accent, #185abd); }
+.arc-guidance summary, .arc-extension summary { cursor: pointer; font-weight: 650; padding-block: .5rem; }
+.arc-layout-option { display: inline-flex; align-items: center; gap: .4rem; }
+.arc-no-hints .arc-guidance mark { color: inherit; background: transparent; }
+.arc-figure[aria-label="Foreign key references"] { color: #183346; }
+.arc-figure[aria-label="Foreign key references"] .arc-target { min-width: 4rem; padding: .3rem .5rem; }
+@media print { .arc-layout-option { display: none; } }

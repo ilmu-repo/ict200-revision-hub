@@ -5,7 +5,7 @@
   function paper(c,open,colour=true){
     const marks=src=>colour?(globalThis.ICT200_EVIDENCE?.[src]||[]).map(([k,x,y,w,h])=>'<i aria-hidden="true" class="arc-'+k+'" style="left:'+x+'%;top:'+y+'%;width:'+w+'%;height:'+h+'%"></i>').join(''):'';
     const legend=colour?'<p class="arc-legend"><span class="arc-entity">Entity</span> <span class="arc-attr">Attribute or key</span> <span class="arc-subtype">Relationship or subtype</span> <span class="arc-rule">Participation</span>'+(c.hierarchy.length?' <span class="arc-bars">Completeness</span>':'')+'</p>':"";
-    return '<details class="source-paper archive-paper" '+(open?'open':'')+'><summary>Original exercise · '+esc(c.term)+' · '+esc(c.ref)+'</summary>'+legend+c.images.map((src,i)=>'<a class="source-scan" href="'+src+'" target="_blank" rel="noopener"><img loading="lazy" src="'+src+'" alt="'+esc(c.title)+' · original printed question, page '+c.pages[i][0]+'">'+marks(src)+'</a>').join("")+'</details>';
+    return '<details class="source-paper archive-paper" '+(open?'open':'')+'><summary>Original exercise · '+esc(c.term)+' · '+esc(c.ref)+' · '+(c.pages.length>1?'pp. ':'p. ')+c.pages.map(p=>p[0]).join('–')+'</summary>'+legend+c.images.map((src,i)=>'<a class="source-scan" href="'+src+'" target="_blank" rel="noopener"><img loading="lazy" src="'+src+'" alt="'+esc(c.title)+' · original printed question, page '+c.pages[i][0]+'">'+marks(src)+'</a>').join("")+'</details>';
   }
   const list=items=>'<ul class="teaching-points">'+items.map(x=>'<li>'+x+'</li>').join("")+'</ul>';
   function marked(s,c){
@@ -17,9 +17,46 @@
     let html="",at=0;for(const m of s.matchAll(rx)){html+=esc(s.slice(at,m.index))+'<mark class="arc-'+words.get(m[0].toLowerCase())+'">'+esc(m[0])+'</mark>';at=m.index+m[0].length;}return html+esc(s.slice(at));
   }
   const counts={"1":"exactly one","0..1":"zero or one","0..*":"zero or many","1..*":"one or more"};
+  let fixedLayout=true;
+  try{fixedLayout=localStorage.getItem("ict200.erd.fixedLayout")!=="off";}catch{}
+  const svgCache=new Map();
+  function growingDiagram(c,index){
+    const cacheKey=c.id+"/"+index;
+    if(svgCache.has(cacheKey))return svgCache.get(cacheKey);
+    const parse=s=>new DOMParser().parseFromString(s,"image/svg+xml");
+    const drawing=parse(c.svg);
+    const seen=new Set(), active=new Set();
+    for(const stage of c.walk.slice(0,index+1)){
+      if(!stage.svg)continue;
+      const layer=parse(stage.svg);
+      for(const group of layer.querySelectorAll("g.node,g.edge"))seen.add(group.querySelector("title")?.textContent);
+      for(const anchor of layer.querySelectorAll("a"))active.add(anchor.getAttribute("xlink:href"));
+    }
+    for(const group of drawing.querySelectorAll("g.node,g.edge")){
+      if(!seen.has(group.querySelector("title")?.textContent))group.remove();
+    }
+    for(const anchor of drawing.querySelectorAll("a")){
+      if(!active.has(anchor.getAttribute("xlink:href")))anchor.remove();
+    }
+    const result=new XMLSerializer().serializeToString(drawing.documentElement);
+    svgCache.set(cacheKey,result);
+    return result;
+  }
+  function bindStepView(root,refresh){
+    const toggle=root.querySelector(".arc-fixed-layout");
+    if(toggle)toggle.onchange=()=>{
+      fixedLayout=toggle.checked;
+      try{localStorage.setItem("ict200.erd.fixedLayout",fixedLayout?"on":"off");}catch{}
+      refresh();
+      root.querySelector(".arc-fixed-layout")?.focus({preventScroll:true});
+    };
+  }
   function step(c,index){
     const stage = c.walk[index];
-    const drawing = (stage.svg || c.svg).replace(/<a\b[^>]*>/g,"<g>").replaceAll("</a>","</g>").replaceAll(">—</text>","></text>");
+    const hasLayout=stage.svg && !c.chen.length;
+    const showDiagram=Boolean(stage.svg) || index===c.walk.length-1;
+    const layoutControl=hasLayout?'<label class="arc-layout-option"><input type="checkbox" class="arc-fixed-layout" '+(fixedLayout?'checked':'')+'> Keep entities in the same positions</label>':'';
+    const drawing = (hasLayout && fixedLayout?growingDiagram(c,index):stage.svg || c.svg).replace(/<a\b[^>]*>/g,"<g>").replaceAll("</a>","</g>").replaceAll(">—</text>","></text>");
     const final = index === c.walk.length-1;
     const clue = stage.clue ? " · "+marked(stage.clue,c) : "";
     const reports = final && c.reports.length ? "<h4>Two information outputs</h4>"+list(c.reports.map(s=>marked(s,c))) : "";
@@ -27,7 +64,17 @@
     return '<article class="step"><small>Step '+(index+1)+' of '+c.walk.length+'</small><h3 tabindex="-1">'+esc(stage.title)+'</h3>'+
       '<blockquote class="clue"><span class="label">'+esc(stage.label)+'</span>'+clue+'</blockquote>'+
       '<p><strong>'+esc(stage.ask)+'</strong></p>'+list(stage.points.map(s=>marked(s,c)))+
-      '<div class="arc-figure" tabindex="0" aria-label="'+esc(c.title+" · "+stage.title)+'">'+drawing+'</div>'+evidence+reports+'</article>';
+      layoutControl+(showDiagram?'<div class="arc-figure" tabindex="0" aria-label="'+esc(c.title+" · "+stage.title)+'">'+drawing+'</div>':'')+evidence+reports+'</article>';
+  }
+  function references(c) {
+    const refs = c.links.map(link => [link.child, link.fk, link.parent]);
+    for (const [parent, , , , children] of c.hierarchy) {
+      for (const child of Object.keys(children)) refs.push([child, c.entities[child][0].name, parent]);
+    }
+    return refs.map(([child, field, parent]) => ({
+      kind:"Referenced key", field:child+"."+field,
+      value:parent+"."+c.entities[parent].filter(f=>f.pk).map(f=>f.name).join(" + ")
+    }));
   }
   const attempts=new Map();
   function studio(root,c,complete){
@@ -35,13 +82,24 @@
     c.links.forEach((l,i)=>l.ends.forEach((v,e)=>slots['end'+i+'_'+e]={value:v,kind:"Cardinality"}));
     const predicates=Object.keys(c.slots).filter(id=>c.slots[id].kind==="Relationship");
     c.links.forEach((l,i)=>{slots["strength"+i]={value:c.entities[l.child].find(f=>f.name===l.fk).pk?"Identifying":"Non-identifying",kind:"Line style"};});
+    references(c).forEach((ref,i)=>slots["ref"+i]=ref);
     const kinds=[...new Set(Object.values(slots).map(s=>s.kind))];
     const state=attempts.get(c.id)||{placed:{},kind:kinds[0]};attempts.set(c.id,state);
     let selected="",hints=true;try{hints=localStorage.getItem("ict200.erd.colourHints")!=="off";}catch{}
-    root.innerHTML='<h1 class="erd-title">'+esc(c.title)+'</h1>'+paper(c,false)+
+    state.responses ||= {};
+    const checks=c.checks || [];
+    const ruleForm=checks.length?'<section class="arc-rules"><h2>'+(c.reading?'Answer the exam question':'Check the business rules')+'</h2>'+checks.map(([question,...choices],i)=>
+      '<fieldset><legend>'+esc(question)+'</legend>'+choices.slice().sort((a,b)=>a.localeCompare(b)).map(choice=>
+        '<label><input type="radio" name="rule-'+i+'" data-rule="'+i+'" value="'+esc(choice)+'" '+(state.responses[i]===choice?'checked':'')+'> '+esc(choice)+'</label>').join("")+'<small aria-live="polite"></small></fieldset>').join("")+
+      '<button type="button" class="button secondary arc-check-rules">Check answers</button><p role="status" class="arc-rule-status"></p></section>':'';
+    const decisions=Object.values(c.rules || {});
+    const assumptions=decisions.length?'<details class="arc-guidance"><summary>Worked-model assumptions and guidance</summary>'+list(decisions.map(s=>marked(s,c)))+'</details>':'';
+    const hintSwitch='<label class="erd-hint-switch"><input type="checkbox" class="arc-toggle"> Colour hints</label>';
+    root.innerHTML=(c.reading?hintSwitch:'')+'<h1 class="erd-title">'+esc(c.title)+'</h1>'+paper(c,true)+ruleForm+assumptions+
+      (c.reading?'<details class="arc-extension"><summary>Optional diagram practice</summary>':'')+
       '<p class="muted">Choose a tile group. Drag a tile to an outlined space, or select a tile and then its target. Check each group as you build the diagram.</p>'+
       '<div class="erd-workbench erd-individual arc-workbench"><div class="erd-drag-area">'+
-      '<section class="erd-palette"><div class="erd-bank-heading"><h4>Tiles</h4><label class="erd-hint-switch"><input type="checkbox" class="arc-toggle"> Colour hints</label></div>'+
+      '<section class="erd-palette"><div class="erd-bank-heading"><h4>Tiles</h4>'+(c.reading?'':hintSwitch)+'</div>'+
       '<label class="erd-group-label">Tile group <select class="arc-stage erd-group-select"></select></label>'+
       '<input type="search" class="erd-attribute-search" aria-label="Find an attribute" placeholder="Find an attribute" hidden>'+
       '<div class="arc-bank erd-tiles" aria-label="Answer tiles"></div><p class="erd-no-matches" hidden>No matching attributes.</p>'+
@@ -49,8 +107,26 @@
       '<div class="erd-board arc-board"></div></div><div class="button-row"><button type="button" class="button arc-check">Check stage</button> '+
       '<button type="button" class="button secondary arc-check-all">Check my diagram</button> '+
       '<button type="button" class="button secondary arc-clear">Clear stage</button></div><p role="status" class="arc-status"></p></div>'+
-      '<a class="button secondary" href="erd-walkthrough.html#'+c.id+'">View step-by-step worked answer</a>';
+      (c.reading?'</details>':'')+'<a class="button secondary" href="erd-walkthrough.html#'+c.id+'">View step-by-step worked answer</a>';
     const find=s=>root.querySelector(s),status=find(".arc-status"),menu=find(".arc-stage"),bank=find(".arc-bank"),board=find(".arc-board");
+    const ruleScore=()=>checks.filter((q,i)=>state.responses[i]===q[1]).length;
+    function finish(){
+      if(ruleScore()!==checks.length)return false;
+      if(!c.reading && !Object.keys(slots).every(correct))return false;
+      complete(c.id);
+      return true;
+    }
+    for(const input of root.querySelectorAll("[data-rule]"))input.onchange=()=>{
+      state.responses[input.dataset.rule]=input.value;
+      input.closest("fieldset").querySelector("small").textContent="";
+      find(".arc-rule-status").textContent="";
+    };
+    if(checks.length)find(".arc-check-rules").onclick=()=>{
+      root.querySelectorAll(".arc-rules fieldset").forEach((box,i)=>{
+        box.querySelector("small").textContent=state.responses[i]===checks[i][1]?"Correct.":state.responses[i]?"Review the wording and try again.":"Choose an answer.";
+      });
+      find(".arc-rule-status").textContent=ruleScore()+" of "+checks.length+" correct. "+(finish()?"Exercise complete.":ruleScore()===checks.length?"Continue with the diagram.":"");
+    };
     const workbench=find(".arc-workbench"), search=find(".erd-attribute-search");
     function filterBank(){
       const query=search.hidden?"":search.value.trim().toLowerCase();
@@ -63,16 +139,31 @@
       if(target)target.focus();
     };
     kinds.forEach(k=>menu.add(new Option(k,k)));menu.value=state.kind;find(".arc-toggle").checked=hints;
+    // Each key cell is followed by its attribute in the diagram. Mark the field the student placed there.
+    const fieldsByKey=new Map();
+    for(const [id,s] of Object.entries(c.slots)){
+      if(s.kind==="Attribute" && s.owner)fieldsByKey.set("s"+(Number(id.slice(1))-1),id);
+    }
+    function roleAt(id){
+      const attr=fieldsByKey.get(id),s=slots[attr];
+      if(!s)return slots[id].value;
+      const name=state.placed[attr] || s.value;
+      return c.entities[s.owner].find(field=>field.name===name)?.role || "—";
+    }
     function correct(id){
       const spec=slots[id],value=state.placed[id];
-      if(spec.kind==="Key" && spec.value==="—")return !value || value==="—";
-      if(spec.kind==="Key" && spec.owner && /FK/.test(spec.value)){
-        if(!value || spec.value.includes("PK")!==value.includes("PK"))return false;
-        const fk=value.match(/FK(\d+)/)?.[1],group=Object.entries(slots).filter(([,s])=>s.owner===spec.owner && s.kind==="Key" && s.value.includes("FK"));
-        return !!fk && Number(fk)<=group.length && group.filter(([key])=>state.placed[key]?.match(/FK(\d+)/)?.[1]===fk).length===1;
+      if(spec.kind==="Key" && spec.owner){
+        const role=roleAt(id);
+        if(role==="—")return !value || value==="—";
+        if(!role.includes("FK"))return value===role;
+        if(!value || role.includes("PK")!==value.includes("PK"))return false;
+        const fk=value.match(/FK(\d+)/)?.[1];
+        const count=c.entities[spec.owner].filter(f=>f.role.includes("FK")).length;
+        const uses=Object.entries(slots).filter(([key,s])=>s.owner===spec.owner && s.kind==="Key" && state.placed[key]?.match(/FK(\d+)/)?.[1]===fk).length;
+        return !!fk && Number(fk)>=1 && Number(fk)<=count && uses===1;
       }
       if(spec.kind!=="Attribute" || !spec.owner)return value===spec.value;
-      const group=Object.entries(slots).filter(([,other])=>other.kind==="Attribute" && other.owner===spec.owner && other.role===spec.role);
+      const group=Object.entries(slots).filter(([,other])=>other.kind==="Attribute" && other.owner===spec.owner);
       return group.some(([,other])=>other.value===value) && group.filter(([key])=>state.placed[key]===value).length===1;
     }
     function paint(){
@@ -80,7 +171,7 @@
       workbench.dataset.hints=hints?"on":"off";
       search.hidden=k!=="Attribute" || entries.length<=10;
       const choices=entries.flatMap(([,s])=>k==="Key"?s.value.split(", "):[s.value]);
-      const alternatives={"Line style":["Identifying","Non-identifying"],"Cardinality":c.chen.length?["1","M"]:Object.keys(counts),"Completeness":["─","══"],"Subtype rule":["d","o"]};
+      const alternatives={"Key":["—"],"Referenced key":Object.entries(c.entities).filter(([,fields])=>fields.some(f=>f.pk)).map(([name,fields])=>name+"."+fields.filter(f=>f.pk).map(f=>f.name).join(" + ")),"Line style":["Identifying","Non-identifying"],"Cardinality":c.chen.length?["1","M"]:Object.keys(counts),"Completeness":["─","══"],"Subtype rule":["d","o"]};
       const values=[...new Set([...choices,...(alternatives[k]||[])])].sort();
       for(const v of values){const b=document.createElement("button");b.type="button";b.textContent=v;b.draggable=true;
         b.className="erd-tile";
@@ -121,8 +212,18 @@
         };
         node.onclick=e=>{e.preventDefault();put();};node.onkeydown=e=>{if(["Enter"," "].includes(e.key)){e.preventDefault();put();}};node.ondragover=e=>e.preventDefault();node.ondrop=e=>{e.preventDefault();selected=e.dataTransfer.getData("text/plain");if(values.includes(selected))put();};
       }
+      if(k==="Referenced key"){
+        wrap.replaceChildren();
+        wrap.setAttribute("aria-label","Foreign key references");
+        for(const [id,spec] of entries){
+          const row=document.createElement("p"),button=document.createElement("button");
+          row.append(spec.field+" references ",button);
+          wrap.append(row);target(button,id,button);
+        }
+        return;
+      }
       wrap.querySelectorAll("title").forEach(n=>n.remove());
-      for(const a of wrap.querySelectorAll("a")){const id=(a.getAttribute("xlink:href")||"").slice(1);if(c.links.length && predicates.includes(id))a.closest("g.edge").dataset.relation=predicates.indexOf(id);a.removeAttribute("xlink:href");a.removeAttribute("xlink:title");if(k==="Line style" && predicates.includes(id)){
+      for(const a of wrap.querySelectorAll("a")){const id=(a.getAttribute("xlink:href")||"").slice(1);if(slots[id]?.kind==="Attribute")a.dataset.attributeSlot=id;if(c.links.length && predicates.includes(id))a.closest("g.edge").dataset.relation=predicates.indexOf(id);a.removeAttribute("xlink:href");a.removeAttribute("xlink:title");if(k==="Line style" && predicates.includes(id)){
           const slot="strength"+predicates.indexOf(id),line=a.closest(".edge")?.querySelector("path");
           if(line)line.setAttribute("stroke-dasharray",state.placed[slot]==="Non-identifying"?"5,3":"none");
           const text=a.querySelector("text");if(text)target(a,slot,text);
@@ -134,15 +235,26 @@
           const context=(spec.kind==="Entity" && k!=="Entity") ||
             (k==="Entity" && (spec.kind==="Relationship" || (spec.kind==="Attribute" && (spec.role?.includes("PK") || c.entities[spec.owner]?.find(f=>!f.role)?.name===spec.value)))) ||
             (k==="Key" && spec.kind==="Attribute") || (k==="Attribute" && spec.kind==="Key");
-          if(t)t.textContent=state.placed[id] || (context?spec.value:"·");
+          if(t)t.textContent=state.placed[id] || (context?(spec.kind==="Key"?roleAt(id):spec.value):"·");
         }}
+      for(const cell of wrap.querySelectorAll("a[data-attribute-slot]")){
+        const keyId="s"+(Number(cell.dataset.attributeSlot.slice(1))-1);
+        if(!fieldsByKey.has(keyId))continue;
+        const txt=cell.querySelector("text");
+        if(!txt)continue;
+        const role=state.placed[keyId] || (k==="Key"?"":roleAt(keyId));
+        txt.style.textDecoration=txt.textContent!=="?" && role.includes("PK")?"underline":"none";
+        if(!cell.classList.contains("arc-target")){
+          txt.setAttribute("fill",role.includes("FK")?(role.includes("PK")?"#7030A0":"#A44200"):role.includes("PK")?"#185ABD":"#006B58");
+        }
+      }
       // Preserve the student's relationship choices between tile groups.
       for(const edge of wrap.querySelectorAll("g.edge[data-relation]")){
         const id=edge.dataset.relation, path=edge.querySelector("path");
         const strength=state.placed["strength"+id];
         if(path)path.setAttribute("stroke-dasharray",strength==="Non-identifying"?"5,3":strength?"none":"2,3");
       }
-      if(k==="Attribute"&&Object.values(slots).some(s=>s.owner))board.insertAdjacentHTML("afterbegin","<p>Attributes with the same key role can appear in any order within their entity.</p>");
+      if(k==="Attribute"&&Object.values(slots).some(s=>s.owner))board.insertAdjacentHTML("afterbegin","<p>List an entity’s attributes in any order. Place the correct key label beside each one. You may renumber its foreign keys. Match each foreign key to its parent in Referenced key.</p>");
       if(k==="Key")board.insertAdjacentHTML("afterbegin","<p>Drop PK and FK labels beside an attribute. A shared key can take both. Leave ordinary attributes blank. Use the dash tile to clear a key.</p>");
       if(c.links.length){
         for(const edge of wrap.querySelectorAll("g.edge[data-relation]")){
@@ -174,7 +286,7 @@
     find(".arc-clear").onclick=()=>{for(const [id,s] of Object.entries(slots))if(s.kind===state.kind)delete state.placed[id];selected="";paint();status.textContent="Stage cleared.";};
     find(".arc-check-all").onclick=()=>{
       const ids=Object.keys(slots), missing=ids.filter(id=>!correct(id));
-      if(!missing.length){complete(c.id);status.textContent="All stages complete. Your diagram matches the worked model.";return;}
+      if(!missing.length){status.textContent=finish()?"All stages complete. Your diagram matches the worked model.":"Diagram complete. Check the business rules above.";return;}
       menu.value=slots[missing[0]].kind;menu.onchange();
       find(".arc-check").click();
       const feedback=status.textContent;
@@ -185,10 +297,10 @@
       for(const proxy of board.querySelectorAll("[data-end-proxy]")){
         const ok=correct(proxy.dataset.endProxy);proxy.classList.toggle("needs-work",!ok);proxy.classList.toggle("is-right",ok);
       }
-      const advice={"Entity":"Use the identifying attributes to name each box.","Attribute":"Check which entity owns the fact and which fields identify its records.","Key":"Trace the attribute to its parent. A shared key can carry both PK and FK.","Relationship":"Read the verb from the first entity to the second.","Cardinality":"Hold one record fixed and count records at the opposite end.","Line style":"Use a solid line when the parent key helps identify the child.","Subtype rule":"Can one record belong to both subtypes?","Completeness":"Can the supertype have a record in neither subtype?","Subtype value":"Match each discriminator value to its branch."};
+      const advice={"Referenced key":"Trace each foreign key to the primary key of the table it references.","Entity":"Use the identifying attributes to name each box.","Attribute":"Check which entity owns the fact and which fields identify its records.","Key":"Trace the attribute to its parent. A shared key can carry both PK and FK.","Relationship":"Read the verb from the first entity to the second.","Cardinality":"Hold one record fixed and count records at the opposite end.","Line style":"Use a solid line when the parent key helps identify the child.","Subtype rule":"Can one record belong to both subtypes?","Completeness":"Can the supertype have a record in neither subtype?","Subtype value":"Match each discriminator value to its branch."};
       status.textContent=right+" of "+total+" correct. "+(right===total?"Choose another tile group.":advice[state.kind]);
-      if(Object.keys(slots).every(correct)){complete(c.id);status.textContent="All stages complete. Your diagram matches the worked model.";}};
+      if(Object.keys(slots).every(correct)){status.textContent=finish()?"All stages complete. Your diagram matches the worked model.":"Diagram complete. Check the business rules above.";}};
     paint();
   }
-  globalThis.ICT200_ARCHIVE={paper,step,studio,titles};
+  globalThis.ICT200_ARCHIVE={paper,step,studio,titles,references,bindStepView};
 })();

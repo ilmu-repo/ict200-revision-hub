@@ -268,7 +268,7 @@
       heading.textContent=section;
       menu.append(heading);
       for(const q of questions.filter(entry=>entry.section===section)) {
-        item(menu,q.title,prefix+(q===question?active:q.parts[0]),q===question?"page":null);
+        item(menu,(q.section.endsWith(" examination")?q.source+" · ":"")+q.title,prefix+(q===question?active:q.parts[0]),q===question?"page":null);
       }
     }
     const title=document.createElement("span");

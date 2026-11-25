@@ -316,6 +316,7 @@
     const navigation = window.ICT200_ERD.navigationBar(question,id,lesson.steps,index,focusStep);
     navigation.append(hintControl());
     root.prepend(navigation);
+    if(ex.archive)window.ICT200_ARCHIVE.bindStepView(root,show);
     for(const [key,change] of [["prev",-1],["next",1]]){
       const b=document.getElementById(key); b.disabled=index+change<0||index+change>=lesson.steps.length;
       b.onclick=()=>{location.hash=ex.id+"/"+(index+1+change);};
